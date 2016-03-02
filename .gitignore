@@ -22,3 +22,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
+/nbproject/private/
+/manifest.mf
+/build.xml
+/nbproject/
