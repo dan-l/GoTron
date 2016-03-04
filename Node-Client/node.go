@@ -46,9 +46,13 @@ func main() {
 
 	log.Println(nodeId, nodeAddr, msServerAddr, httpServerAddr)
 
-	messages := make(chan string)
-	go httpServe(messages)
-	msg := <-messages
+	httpMsg := make(chan string)
+	rpcMsg := make(chan string)
+	go msRpcServce(rpcMsg, msServerAddr)
+	go httpServe(httpMsg)
+	msg := <-rpcMsg
+	log.Println(msg)
+	msg = <-httpMsg
 	log.Println(msg)
 }
 
