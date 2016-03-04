@@ -20,6 +20,7 @@ _cgo_export.*
 _testmain.go
 
 .vendor
+GoTron-Log.txt
 
 *.exe
 *.test
@@ -27,4 +28,4 @@ _testmain.go
 /nbproject/private/
 /manifest.mf
 /build.xml
-/nbproject/
+/nbproject/GoTron-Log.txt

@@ -31,6 +31,7 @@ const (
 )
 
 var gameState GameState
+var done chan int
 
 func main() {
 	if len(os.Args) < 5 {
@@ -46,17 +47,18 @@ func main() {
 
 	log.Println(nodeId, nodeAddr, msServerAddr, httpServerAddr)
 
+	initLogging()
+
 	httpMsg := make(chan string)
 	rpcMsg := make(chan string)
 	go msRpcServce(rpcMsg, msServerAddr)
 	go httpServe(httpMsg)
-	msg := <-rpcMsg
-	log.Println(msg)
-	msg = <-httpMsg
-	log.Println(msg)
+	<-done
+	<-done
 }
 
 func init() {
+	done = make(chan int, 2)
 	board := make([][]string, boardSize)
 	for i := range board {
 		board[i] = make([]string, boardSize)

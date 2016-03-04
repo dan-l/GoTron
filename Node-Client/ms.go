@@ -31,5 +31,5 @@ func msRpcServce(messages chan string, msIpPort string) {
 	log.Println("Listening to ms server")
 	conn, _ := msListener.Accept()
 	rpc.ServeConn(conn)
-	messages <- "done"
+	done <- 1
 }
