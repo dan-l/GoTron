@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/googollee/go-socket.io"
+	"github.com/pkg/browser"
 	"log"
 	"net/http"
 )
@@ -29,6 +30,22 @@ func httpServe(messages chan string) {
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("./asset")))
 	log.Println("Serving at localhost:5000...")
+
+	// Point the default browser at the page to save the user the effort of
+	// doing it themselves.
+	// TODO: Currently, as a hack, we tell the default browser to open up the
+	//       URL for where the server will be listening at, and hope the server
+	//       wins the race. We should really be doing this only after we know
+	//       the server is fully up.
+	browser.OpenURL("http://localhost:5000")
+
 	log.Fatal(http.ListenAndServe(":5000", nil))
-	done <- 1
+	messages <- "exit"
+}
+
+// For temporary testing purposes.
+func main() {
+	httpMsg := make(chan string)
+	go httpServe(httpMsg)
+	<-httpMsg
 }
