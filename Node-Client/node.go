@@ -102,7 +102,7 @@ func intervalUpdate() {
 	for {
 		currentLocationJSON, err := json.Marshal(gameState.currLocs[nodeId])
 		checkErr(err)
-		for i, node := range nodes {
+		for _, node := range nodes {
 			if node.id != nodeId {
 				sendUDPPacket(node.ip, currentLocationJSON)
 			}

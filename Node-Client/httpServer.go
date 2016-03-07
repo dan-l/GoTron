@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/googollee/go-socket.io"
-	"github.com/pkg/browser"
 	"log"
 	"net/http"
+	"github.com/googollee/go-socket.io"
+	"github.com/pkg/browser"
 )
 
 func httpServe(messages chan string) {
@@ -44,8 +44,8 @@ func httpServe(messages chan string) {
 }
 
 // For temporary testing purposes.
-func main() {
-	httpMsg := make(chan string)
-	go httpServe(httpMsg)
-	<-httpMsg
-}
+//func main() {
+//httpMsg := make(chan string)
+//go httpServe(httpMsg)
+//<-httpMsg
+//}
