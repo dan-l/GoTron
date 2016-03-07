@@ -63,7 +63,6 @@ func main() {
 	}
 
 	nodeId, nodeAddr, msServerAddr, httpServerAddr = os.Args[1], os.Args[2], os.Args[3], os.Args[4]
-	init() // Initialize variables.
 
 	log.Println(nodeId, nodeAddr, msServerAddr, httpServerAddr)
 	initLogging()
@@ -99,8 +98,9 @@ func init() {
 
 // Update peers with node's current location.
 func intervalUpdate() {
+	defer waitGroup.Done()
 	for {
-		currentLocationJSON, err := json.Marshal(gameState.currLocs[clientName])
+		currentLocationJSON, err := json.Marshal(gameState.currLocs[nodeId])
 		checkErr(err)
 		for i, node := range nodes {
 			if node.id != nodeId {
