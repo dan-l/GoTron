@@ -19,13 +19,13 @@ _cgo_export.*
 
 _testmain.go
 
+.vendor
+GoTron-Log.txt
+
 *.exe
 *.test
 *.prof
 /nbproject/private/
 /manifest.mf
 /build.xml
-/nbproject/
-
-
-.DS_Store
+/nbproject/GoTron-Log.txt
