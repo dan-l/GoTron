@@ -6,7 +6,7 @@ import (
 	"net/rpc"
 )
 
-type MatchMakingService int
+type NodeService int
 
 type ValReply struct {
 	msg string
@@ -16,20 +16,37 @@ type GameArgs struct {
 	nodeList []string
 }
 
-func (kvs *MatchMakingService) StartGame(args *GameArgs, reply *ValReply) error {
+var nodeRpcAddr string
+var msServerAddr string // Matchmaking server IP.
+var msService *rpc.Client
+
+func (kvs *NodeService) StartGame(args *GameArgs, reply *ValReply) error {
 	log.Println("Starting game")
 	return nil
 }
 
-func msRpcServce(messages chan string, msIpPort string) {
-	msService := new(MatchMakingService)
-	rpc.Register(msService)
-	msListener, e := net.Listen("tcp", msIpPort)
+func msRpcServce() {
+	defer waitGroup.Done()
+	nodeService := new(NodeService)
+	rpc.Register(nodeService)
+	nodeListener, e := net.Listen("tcp", nodeRpcAddr)
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
-	log.Println("Listening to ms server")
-	conn, _ := msListener.Accept()
+	log.Println("Listening for ms server at ", nodeRpcAddr)
+	conn, _ := nodeListener.Accept()
 	rpc.ServeConn(conn)
-	done <- 1
+}
+
+func connectMs() {
+	msService, err := rpc.Dial("tcp", msServerAddr)
+	if err != nil {
+		log.Fatal("connect error:", err)
+	}
+	log.Println("Connected to matchmaking server", msService)
+}
+
+func notifyPeersDirChanged() {
+	// msService.Call("DirectionChanged")
+	// listen to socket io for direction changed topic
 }

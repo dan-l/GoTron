@@ -1,13 +1,14 @@
 package main
 
 import (
-	"log"
-	"net/http"
 	"github.com/googollee/go-socket.io"
 	"github.com/pkg/browser"
+	"log"
+	"net/http"
 )
 
-func httpServe(messages chan string) {
+func httpServe() {
+	defer waitGroup.Done()
 	server, err := socketio.NewServer(nil)
 	if err != nil {
 		log.Fatal(err)
@@ -29,7 +30,7 @@ func httpServe(messages chan string) {
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("./asset")))
-	log.Println("Serving at localhost:5000...")
+	log.Println("Serving at ", httpServerAddr, "...")
 
 	// Point the default browser at the page to save the user the effort of
 	// doing it themselves.
@@ -37,10 +38,9 @@ func httpServe(messages chan string) {
 	//       URL for where the server will be listening at, and hope the server
 	//       wins the race. We should really be doing this only after we know
 	//       the server is fully up.
-	browser.OpenURL("http://localhost:5000")
+	browser.OpenURL("http://localhost" + httpServerAddr)
 
-	log.Fatal(http.ListenAndServe(":5000", nil))
-	messages <- "exit"
+	log.Fatal(http.ListenAndServe(httpServerAddr, nil))
 }
 
 // For temporary testing purposes.
