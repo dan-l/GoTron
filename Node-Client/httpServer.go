@@ -34,7 +34,7 @@ func httpServe() {
 	//       URL for where the server will be listening at, and hope the server
 	//       wins the race. We should really be doing this only after we know
 	//       the server is fully up.
-	browser.OpenURL("http://localhost" + httpServerAddr)
+	browser.OpenURL("http://" + httpServerAddr)
 
 	log.Fatal(http.ListenAndServe(httpServerAddr, nil))
 }
