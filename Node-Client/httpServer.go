@@ -16,10 +16,6 @@ func httpServe() {
 	server.On("connection", func(so socketio.Socket) {
 		log.Println("on connection")
 		so.Join("chat")
-		so.On("chat message", func(msg string) {
-			log.Println("emit:", so.Emit("chat message", msg))
-			so.BroadcastTo("chat", "chat message", msg)
-		})
 		so.On("disconnection", func() {
 			log.Println("on disconnect")
 		})
@@ -42,10 +38,3 @@ func httpServe() {
 
 	log.Fatal(http.ListenAndServe(httpServerAddr, nil))
 }
-
-// For temporary testing purposes.
-//func main() {
-//httpMsg := make(chan string)
-//go httpServe(httpMsg)
-//<-httpMsg
-//}
