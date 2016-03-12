@@ -32,61 +32,54 @@ type Location struct {
 
 // Peers
 type Node struct {
-	id string
-	ip string
+	id    string
+	ip    string
+	alive bool
 }
 
 const (
-	boardSize int = 10
+	BOARD_SIZE       int = 10
+	CHECKIN_INTERVAL int = 200
 )
 
 // Game variables.
 var nodeId string         // Name of client.
 var nodeAddr string       // IP of client.
-var msServerAddr string   // Matchmaking server IP.
 var httpServerAddr string // HTTP Server IP.
 var gameState GameState   // Overall GameState of the client.
 var nodes []Node          // All nodes in the game.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
-var done chan int            // For external processes.
 
 func main() {
 	if len(os.Args) < 5 {
-		log.Println("usage: node.go [nodeid] [nodeAddr] [msServerAddr] [httpServerAddr]")
+		log.Println("usage: NodeClient [nodeid] [nodeAddr] [nodeRpcAddr] [msServerAddr] [httpServerAddr]")
 		log.Println("[nodeid] unique id for each player")
-		log.Println("[nodeAddr] the rpc ip:port the node is listening to")
-		log.Println("[msServerAddr] the rpc ip:port of matchmaking server is listening to")
+		log.Println("[nodeAddr] the udp ip:port node is listening to")
+		log.Println("[nodeRpcAddr] the rpc ip:port node is hosting for ms server")
+		log.Println("[msServerAddr] the rpc ip:port of matchmaking server node is connecting to")
 		log.Println("[httpServerAddr] the ip:port the http server is binded to ")
 		os.Exit(1)
 	}
 
-	nodeId, nodeAddr, msServerAddr, httpServerAddr = os.Args[1], os.Args[2], os.Args[3], os.Args[4]
+	nodeId, nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr = os.Args[1], os.Args[2], os.Args[3], os.Args[4], os.Args[5]
 
-	log.Println(nodeId, nodeAddr, msServerAddr, httpServerAddr)
+	log.Println(nodeId, nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
 
-	httpMsg := make(chan string)
-	rpcMsg := make(chan string)
-	go msRpcServce(rpcMsg, msServerAddr)
-	go httpServe(httpMsg)
-	<-done
-	<-done
-
-	waitGroup.Add(1)    // Add an internal process.
+	waitGroup.Add(3) // Add internal process.
+	go msRpcServce()
+	go httpServe()
 	go intervalUpdate() // Internal update mechanism.
-
-	// Wait until processes are done.
-	waitGroup.Wait()
+	waitGroup.Wait()    // Wait until processes are done.
 }
 
 // Initialize variables.
 func init() {
-	done = make(chan int, 2)
-	board := make([][]string, boardSize)
+	board := make([][]string, BOARD_SIZE)
 	for i := range board {
-		board[i] = make([]string, boardSize)
+		board[i] = make([]string, BOARD_SIZE)
 	}
 	currLocs := make(map[string]Location)
 	scores := make(map[string]int)
@@ -124,6 +117,18 @@ func sendUDPPacket(ip string, data []byte) {
 
 	_, err = udpConn.Write(data)
 	checkErr(err)
+}
+
+func handleNodeFailure() {
+	// only for regular node
+	// check if the time it last checked in exceed CHECKIN_INTERVAL
+	// mark the alive property on node object
+}
+
+func leaderConflictResolution() {
+	// as the referee of the game,
+	// broadcast your game state for the current window to all peers
+	// call sendUDPPacket
 }
 
 // Error checking. Exit program when error occurs.
