@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	//"log"
 	"net"
 	//"net/rpc"
 	"encoding/json"
@@ -123,7 +123,7 @@ func ListenConnections(this *KeyValService, addr string) {
 }
 
 func main() {
-	if len(os.Args) != 1 {
+	if len(os.Args) != 2 {
 		fmt.Printf("Usage: %s <ms addr><r>\n", os.Args[0])
 		os.Exit(-1)
 	}
@@ -138,5 +138,6 @@ func main() {
 	// get arguments
 	msAddr := os.Args[1]
 
+	// Listening to Clients
 	go ListenConnections(kvService, msAddr)
 }
