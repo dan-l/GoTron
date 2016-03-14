@@ -10,59 +10,39 @@ import (
 	"time"
 )
 
-type GameState struct {
-	board    Board
-	currLocs map[string]Location // where the players are now
-	stat     GameStat
-}
-
-type GameStat struct {
-	scores map[string]int
-}
-
-// Board is represented by string with value of
-// id if it's occupied by corresponding player or "" if unoccupied
-type Board [][]string
-
-type Location struct {
-	x   int
-	y   int
-	dir string // 'U', 'D', 'L', 'R'
+type Pos struct {
+	X int
+	Y int
 }
 
 // Peers
 type Node struct {
-	id    string
-	ip    string
+	Id      string
+	Ip      string
+	currLoc Pos // internal use, so that it doesn't get exported during marshalling
 }
 
 const (
-	BOARD_SIZE       int = 10
-	CHECKIN_INTERVAL int = 200
+	BOARD_SIZE       int    = 10
+	CHECKIN_INTERVAL int    = 200
+	DIRECTION_UP     string = "U"
+	DIRECTION_DOWN   string = "D"
+	DIRECTION_LEFT   string = "L"
+	DIRECTION_RIGHT  string = "R"
 )
 
 // Game variables.
 var nodeId string         // Name of client.
 var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
-var gameState GameState   // Overall GameState of the client.
 var nodes []Node          // All nodes in the game.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
 
-var BOARD = [10][10]string{
-	[10]string{"", "", "", "", "", "", "", "", "", ""},
-	[10]string{"", "p1", "", "", "", "", "", "", "p3", ""},
-	[10]string{"", "", "", "", "", "", "", "", "", ""},
-	[10]string{"", "", "", "", "", "", "", "", "", ""},
-	[10]string{"", "p5", "", "", "", "", "", "", "", ""},
-	[10]string{"", "", "", "", "", "", "", "", "p6", ""},
-	[10]string{"", "", "", "", "", "", "", "", "", ""},
-	[10]string{"", "", "", "", "", "", "", "", "", ""},
-	[10]string{"", "p4", "", "", "", "", "", "", "p2", ""},
-	[10]string{"", "", "", "", "", "", "", "", "", ""},
-}
+var board [10][10]string
+var directions map[string]string
+var playerMap map[string]string
 
 func main() {
 	if len(os.Args) < 5 {
@@ -89,30 +69,57 @@ func main() {
 
 // Initialize variables.
 func init() {
-	board := make([][]string, BOARD_SIZE)
-	for i := range board {
-		board[i] = make([]string, BOARD_SIZE)
+	board = [10][10]string{
+		[10]string{"", "", "", "", "", "", "", "", "", ""},
+		[10]string{"", "p1", "", "", "", "", "", "", "p3", ""},
+		[10]string{"", "", "", "", "", "", "", "", "", ""},
+		[10]string{"", "", "", "", "", "", "", "", "", ""},
+		[10]string{"", "p5", "", "", "", "", "", "", "", ""},
+		[10]string{"", "", "", "", "", "", "", "", "p6", ""},
+		[10]string{"", "", "", "", "", "", "", "", "", ""},
+		[10]string{"", "", "", "", "", "", "", "", "", ""},
+		[10]string{"", "p4", "", "", "", "", "", "", "p2", ""},
+		[10]string{"", "", "", "", "", "", "", "", "", ""},
 	}
-	currLocs := make(map[string]Location)
-	scores := make(map[string]int)
-	gameStat := GameStat{scores}
-	gameState = GameState{board, currLocs, gameStat}
+
+	directions = map[string]string{
+		"p1": DIRECTION_RIGHT,
+		"p2": DIRECTION_LEFT,
+		"p3": DIRECTION_LEFT,
+		"p4": DIRECTION_RIGHT,
+		"p5": DIRECTION_RIGHT,
+		"p6": DIRECTION_LEFT,
+	}
+
+	playerMap = map[string]string{
+		"id1": "p1",
+		"id2": "p2",
+		"id3": "p3",
+		"id4": "p4",
+		"id5": "p5",
+		"id6": "p6",
+	}
+
 	nodes = make([]Node, 0)
-	log.Println(gameState)
 }
 
 // Update peers with node's current location.
 func intervalUpdate() {
 	defer waitGroup.Done()
 	for {
-		currentLocationJSON, err := json.Marshal(gameState.currLocs[nodeId])
-		checkErr(err)
+		// TODO should not be doing this loop everytime! smh
 		for _, node := range nodes {
-			if node.id != nodeId {
-				sendUDPPacket(node.ip, currentLocationJSON)
+			if node.Id == nodeId {
+				currentLocationJSON, err := json.Marshal(node.currLoc)
+				checkErr(err)
+				for _, node := range nodes {
+					if node.Id != nodeId {
+						sendUDPPacket(node.Ip, currentLocationJSON)
+					}
+				}
+				time.Sleep(500 * time.Millisecond)
 			}
 		}
-		time.Sleep(500 * time.Millisecond)
 	}
 }
 
