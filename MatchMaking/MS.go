@@ -1,20 +1,20 @@
 package main
 
 import (
-	"fmt"
-	//"log"
-	"net"
-	//"net/rpc"
 	"encoding/json"
-	//"github.com/deckarep/golang-set"
+	"fmt"
+	"net"
 	"os"
 	"sync"
+	"time"
 )
 
 var EmptyStruct struct{}
 
+const sessionDelay time.Duration = 250 * time.Millisecond
+
 // main context
-type KeyValService struct {
+type Context struct {
 	NodeLock sync.RWMutex
 
 	NodeList map[string]net.Conn
@@ -25,10 +25,24 @@ type KeyValService struct {
 	roomLimit int
 }
 
-type Message struct {
-	Id      int32
-	NodeId  string
-	Message string
+// Reset context for the next session
+func (this *Context) clearContext() {
+	this.NodeLock.Lock()
+	this.NodeList = make(map[string]net.Conn)
+	this.gameList = make(map[int]map[string]struct{})
+	this.roomID = 0
+	this.MessageId = 0
+	this.NodeLock.Unlock()
+}
+
+// Notify all cients in current session about other players in the same room
+func (this *Context) notifyClient() {
+	this.NodeLock.Lock()
+	// Get all keys of gameList
+
+	// For each client in a game room, trigger startGame() in those clients
+
+	this.NodeLock.Unlock()
 }
 
 // check if a fatal error has ocurred
@@ -53,14 +67,13 @@ func DebugPrint(level int, str string) {
 	}
 }
 
+// When clients first connect to the MS server
 type HelloMessage struct {
-	Id              string
-	Keys            []string
-	UnavailableKeys []string
+	Id string
 }
 
 // this is called when a node joins, it handles adding the node to lists
-func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
+func AddNode(this *Context, hello *HelloMessage, conn net.Conn) {
 	DebugPrint(1, "New Client"+hello.Id)
 
 	this.NodeLock.Lock()
@@ -91,7 +104,7 @@ func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
 }
 
 // called when a new node connects, and processes responses from it
-func HandleConnect(this *KeyValService, conn net.Conn) {
+func HandleConnect(this *Context, conn net.Conn) {
 	buffer := make([]byte, 1024)
 
 	// reading the hello message
@@ -111,7 +124,6 @@ func HandleConnect(this *KeyValService, conn net.Conn) {
 	// store data locally
 	AddNode(this, &hello, conn)
 
-	DebugPrint(1, "SUCCESS")
 }
 
 func main() {
@@ -122,13 +134,31 @@ func main() {
 	}
 
 	// setup the kv service
-	kvService := &KeyValService{
+	context := &Context{
 		NodeList:  make(map[string]net.Conn),
 		MessageId: 0,
 		roomID:    0,
 		roomLimit: 2,
-		gameList:  make(map[int]map[string]struct{}), // eww
+		gameList:  make(map[int]map[string]struct{}),
 	}
+
+	// Start the timer
+	ticker := time.NewTicker(10 * time.Second)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				// Trigger startGame on client side and reset timer
+				fmt.Println("Tick at", <-ticker.C)
+				context.clearContext()
+				context.notifyClient()
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 
 	// get arguments
 	msAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
@@ -147,7 +177,7 @@ func main() {
 			fmt.Println("Error accepting: ", e)
 			continue
 		}
-		go HandleConnect(kvService, newConn)
+		go HandleConnect(context, newConn)
 	}
 	DebugPrint(1, "Exiting")
 }
