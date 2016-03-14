@@ -2,26 +2,11 @@
 
 const PLAYER_RECT_WIDTH = 10;
 const PLAYER_RECT_HEIGHT = 10;
-const PLAYER_COLOURS = [
-  "red",
-  "green",
-  "blue",
-  "yellow",
-  "black",
-  "orange",
-];
 
 const gSocket = io();
 const gCanvas = new fabric.Canvas("mainCanvas");
-var gPlayerRects = {};
-var gPlayerRect;
-var gInitialised = false;
 
 window.onkeydown = function(event) {
-  if (!gInitialised) {
-    return;
-  }
-
   switch (event.key) {
     case "w":
       gPlayerRect.setTop(Math.max(gPlayerRect.getTop() - gPlayerRect.getHeight(), 0));
@@ -64,45 +49,3 @@ function getValidatedObject(msg, expectedProps) {
 
   return validatedObject;
 }
-
-function onConfig(msg) {
-  if (gInitialised) {
-    // TODO: Signal failure
-    return;
-  }
-
-  const EXPECTED_CONFIG_PROPS = [
-    "players",
-    "selfID",
-  ];
-  let config = getValidatedObject(msg, EXPECTED_CONFIG_PROPS);
-  if (!config) {
-    console.log("Couldn't get validated config");
-    // TODO: Signal failure
-    return;
-  }
-
-  if (config.players.length > PLAYER_COLOURS.length) {
-    console.log("player count too high");
-    // TODO: Signal failure
-    return;
-  }
-
-  for (let i = 0; i < config.players.length; i++) {
-    let rect = new fabric.Rect({
-      left: i * 20,
-      top: i * 20,
-      fill: PLAYER_COLOURS[i],
-      width: PLAYER_RECT_WIDTH,
-      height: PLAYER_RECT_HEIGHT,
-    });
-    gPlayerRects[config.players[i]] = rect;
-    gPlayerRect = gPlayerRects[config.selfID];
-    gCanvas.add(rect);
-  }
-
-  gCanvas.renderAll();
-  gInitialised = true;
-}
-
-gSocket.on("config", onConfig);

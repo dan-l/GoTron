@@ -16,13 +16,6 @@ func httpServe() {
 	server.On("connection", func(so socketio.Socket) {
 		log.Println("on connection")
 		so.Join("chat")
-		// TODO: Use JSON utilities to send the config instead of using error
-		//       prone manual strings.
-		so.Emit("config",
-			"{\"players\": [\"a\", \"b\", \"c\", \"d\"], \"selfID\": \"a\"}")
-		so.On("playerMove", func(direction string) {
-			log.Println("playerMove:", direction)
-		})
 		so.On("disconnection", func() {
 			log.Println("on disconnect")
 		})
