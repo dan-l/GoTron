@@ -13,45 +13,7 @@ var EmptyStruct struct{}
 
 const sessionDelay time.Duration = 250 * time.Millisecond
 
-// main context
-type Context struct {
-	NodeLock sync.RWMutex
-
-	NodeList map[string]net.Conn
-	gameList map[int]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
-
-	MessageId int // atomically incremented message id
-	roomID    int // atomically incremented game room id
-	roomLimit int
-}
-
-// Reset context for the next session
-func (this *Context) clearContext() {
-	this.NodeLock.Lock()
-	this.NodeList = make(map[string]net.Conn)
-	this.gameList = make(map[int]map[string]struct{})
-	this.roomID = 0
-	this.MessageId = 0
-	this.NodeLock.Unlock()
-}
-
-// Notify all cients in current session about other players in the same room
-func (this *Context) notifyClient() {
-	this.NodeLock.Lock()
-	// Get all keys of gameList
-
-	// For each client in a game room, trigger startGame() in those clients
-
-	this.NodeLock.Unlock()
-}
-
-// check if a fatal error has ocurred
-func FatalError(e error) {
-	if e != nil {
-		fmt.Println(e)
-		os.Exit(-10)
-	}
-}
+/////////// Debugging Helper
 
 // Level for printing
 // 0 - only errors
@@ -67,9 +29,78 @@ func DebugPrint(level int, str string) {
 	}
 }
 
+// check if a fatal error has ocurred
+func FatalError(e error) {
+	if e != nil {
+		fmt.Println(e)
+		os.Exit(-10)
+	}
+}
+
+/////////// RPC connection
+
 // When clients first connect to the MS server
 type HelloMessage struct {
 	Id string
+}
+
+type GameArgs struct {
+	nodeList []string // List of peer a node should talk to
+}
+
+// Reply from client
+type ValReply struct {
+	Val string // value; depends on the call
+}
+
+// main context
+type Context struct {
+	NodeLock sync.RWMutex
+
+	NodeList map[string]net.Conn
+	gameList map[int]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
+
+	MessageId int // atomically incremented message id
+	roomID    int // atomically incremented game room id
+	roomLimit int
+}
+
+// Reset context for the next session
+func (this *Context) endSession() {
+	this.NodeLock.Lock()
+	this.NodeList = make(map[string]net.Conn)
+	this.gameList = make(map[int]map[string]struct{})
+	this.roomID = 0
+	this.MessageId = 0
+	this.NodeLock.Unlock()
+}
+
+// Notify all cients in current session about other players in the same room
+func (this *Context) notifyClient() {
+	keys := make([]int, 0, len(this.gameList))
+
+	this.NodeLock.Lock()
+
+	// Get all keys of gameList
+	for k := range this.gameList {
+		keys = append(keys, k)
+	}
+
+	fmt.Println("Keys:", keys)
+
+	/*
+		for k := range keys {
+			clients := this.gameList[k]
+
+			for c := range clients {
+				// Trigger startGame() in c
+			}
+		}
+	*/
+
+	// For each client in a game room, trigger startGame() in those clients
+
+	this.NodeLock.Unlock()
 }
 
 // this is called when a node joins, it handles adding the node to lists
@@ -143,7 +174,7 @@ func main() {
 	}
 
 	// Start the timer
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	quit := make(chan struct{})
 	go func() {
 		for {
@@ -151,8 +182,13 @@ func main() {
 			case <-ticker.C:
 				// Trigger startGame on client side and reset timer
 				fmt.Println("Tick at", <-ticker.C)
-				context.clearContext()
+
+				// Keep track of users whose gameRoom is not full
+
+				// Reset timer and keep all clients
+
 				context.notifyClient()
+				context.endSession()
 			case <-quit:
 				ticker.Stop()
 				return
