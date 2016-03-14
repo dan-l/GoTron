@@ -107,6 +107,8 @@ func (this *Context) notifyClient() {
 
 func (this *Context) Join(args *HelloMessage, reply *ValReply) error {
 	log.Println("Join successfully")
+	log.Println("Client:", args.Id)
+
 	return nil
 }
 

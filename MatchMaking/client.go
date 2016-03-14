@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	//"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -10,6 +10,8 @@ import (
 	//"sync"
 	//"time"
 )
+
+const RpcJoin string = "Context.Join"
 
 func CheckError(err error, n int) {
 	if err != nil {
@@ -20,8 +22,9 @@ func CheckError(err error, n int) {
 
 type MatchMakingService int
 
+// Reply from MS server
 type ValReply struct {
-	msg string
+	Val string // value; depends on the call
 }
 
 type GameArgs struct {
@@ -57,7 +60,7 @@ func main() {
 		// Export MatchMakingService to allow MS to trigger start game here
 		msService := new(MatchMakingService)
 		rpc.Register(msService)
-		msListener, e := net.Listen("tcp", remoteAddr.String())
+		msListener, e := net.Listen("tcp", localAddr.String())
 		if e != nil {
 			log.Fatal("listen error:", e)
 		}
@@ -67,22 +70,15 @@ func main() {
 	}()
 
 	// First connect to the MS server
-	conn, e := net.DialTCP("tcp", localAddr, remoteAddr)
-	if e != nil {
-		// failed connection, sleep and try again in a bit
-		//DebugPrint(1, "Reconnecting to leader in "+string(ReconnectInterval))
-		//time.Sleep(ReconnectInterval)
-		fmt.Println("Fail to connect")
-	}
-
-	hello := &HelloMessage{Id: localAddr.String()}
-	bHello, e := json.Marshal(hello)
+	client, e := rpc.Dial("tcp", remoteAddr.String())
 	FatalError(e)
-	//fmt.Println("Client->MS:", bHello[:])
+	defer client.Close()
 
-	_, e = conn.Write(bHello) // Send hello message to frontend
-	FatalError(e)
+	var reply *ValReply = &ValReply{Val: ""}
+	e = client.Call(RpcJoin, &HelloMessage{Id: localAddr.String()}, reply)
+	CheckError(e, 6)
 
+	fmt.Println("Reply: ", reply.Val)
 }
 
 // Level for printing
