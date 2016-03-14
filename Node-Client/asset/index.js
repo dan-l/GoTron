@@ -1,8 +1,8 @@
 "use strict";
 
-var PLAYER_RECT_WIDTH = 10;
-var PLAYER_RECT_HEIGHT = 10;
-var PLAYER_COLOURS = [
+const PLAYER_RECT_WIDTH = 10;
+const PLAYER_RECT_HEIGHT = 10;
+const PLAYER_COLOURS = [
   "red",
   "green",
   "blue",
@@ -11,8 +11,8 @@ var PLAYER_COLOURS = [
   "orange",
 ];
 
-var gSocket = io();
-var gCanvas = new fabric.Canvas("mainCanvas");
+const gSocket = io();
+const gCanvas = new fabric.Canvas("mainCanvas");
 var gPlayerRects = {};
 var gPlayerRect;
 var gInitialised = false;
@@ -46,32 +46,40 @@ window.onkeydown = function(event) {
   gCanvas.renderAll();
 };
 
-gSocket.on("config", function(msg) {
+function getValidatedObject(msg, expectedProps) {
+  // As a reminder, we don't bother with security at all in this project.
+  let validatedObject;
+  try {
+    validatedObject = JSON.parse(msg);
+  } catch (e) {
+    // TODO: Signal failure
+    return null;
+  }
+
+  for (let expectedProp of expectedProps) {
+    if (!(expectedProp in validatedObject)) {
+      return null;
+    }
+  }
+
+  return validatedObject;
+}
+
+function onConfig(msg) {
   if (gInitialised) {
     // TODO: Signal failure
     return;
   }
 
-  // As a reminder, we don't bother with security at all in this project.
-  var config;
-  try {
-    config = JSON.parse(msg);
-  } catch (e) {
-    // TODO: Signal failure
-    return;
-  }
-
-  var EXPECTED_CONFIG_PROPS = [
+  const EXPECTED_CONFIG_PROPS = [
     "players",
     "selfID",
   ];
-  for (var i = 0; i < EXPECTED_CONFIG_PROPS.length; i++) {
-    var expectedProp = EXPECTED_CONFIG_PROPS[i];
-    if (!(expectedProp in config)) {
-      console.log("missing prop: " + expectedProp);
-      // TODO: Signal failure
-      return;
-    }
+  let config = getValidatedObject(msg, EXPECTED_CONFIG_PROPS);
+  if (!config) {
+    console.log("Couldn't get validated config");
+    // TODO: Signal failure
+    return;
   }
 
   if (config.players.length > PLAYER_COLOURS.length) {
@@ -80,8 +88,8 @@ gSocket.on("config", function(msg) {
     return;
   }
 
-  for (var i = 0; i < config.players.length; i++) {
-    var rect = new fabric.Rect({
+  for (let i = 0; i < config.players.length; i++) {
+    let rect = new fabric.Rect({
       left: i * 20,
       top: i * 20,
       fill: PLAYER_COLOURS[i],
@@ -95,4 +103,6 @@ gSocket.on("config", function(msg) {
 
   gCanvas.renderAll();
   gInitialised = true;
-});
+}
+
+gSocket.on("config", onConfig);

@@ -1,43 +1,21 @@
 package main
 
 import (
-	"fmt"
-	//"log"
-	"net"
-	//"net/rpc"
 	"encoding/json"
-	//"github.com/deckarep/golang-set"
+	"fmt"
+	"log"
+	"net"
+	"net/rpc"
 	"os"
 	"sync"
+	"time"
 )
 
 var EmptyStruct struct{}
 
-// main context
-type KeyValService struct {
-	NodeLock sync.RWMutex
+const sessionDelay time.Duration = 250 * time.Millisecond
 
-	NodeList map[string]net.Conn
-	gameList map[int]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
-
-	MessageId int // atomically incremented message id
-	roomID    int // atomically incremented game room id
-	roomLimit int
-}
-
-type Message struct {
-	Id      int32
-	NodeId  string
-	Message string
-}
-
-// check if a fatal error has ocurred
-func FatalError(e error) {
-	if e != nil {
-		fmt.Println(e)
-		os.Exit(-10)
-	}
-}
+/////////// Debugging Helper
 
 // Level for printing
 // 0 - only errors
@@ -53,14 +31,93 @@ func DebugPrint(level int, str string) {
 	}
 }
 
-type HelloMessage struct {
-	Id              string
-	Keys            []string
-	UnavailableKeys []string
+// check if a fatal error has ocurred
+func FatalError(e error) {
+	if e != nil {
+		fmt.Println(e)
+		os.Exit(-10)
+	}
 }
 
+/////////// RPC connection
+
+// When clients first connect to the MS server
+type Node struct {
+	Id string // Napon
+	Ip string // ip addr of Napon
+}
+
+type GameArgs struct {
+	nodeList []string // List of peer a node should talk to
+}
+
+// Reply from client
+type ValReply struct {
+	Val string // value; depends on the call
+}
+
+// main context
+type Context struct {
+	NodeLock sync.RWMutex
+
+	NodeList map[string]net.Conn
+	gameList map[int]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
+
+	MessageId int // atomically incremented message id
+	roomID    int // atomically incremented game room id
+	roomLimit int
+}
+
+// Reset context for the next session
+func (this *Context) endSession() {
+	this.NodeLock.Lock()
+	this.NodeList = make(map[string]net.Conn)
+	this.gameList = make(map[int]map[string]struct{})
+	this.roomID = 0
+	this.MessageId = 0
+	this.NodeLock.Unlock()
+}
+
+// Notify all cients in current session about other players in the same room
+func (this *Context) notifyClient() {
+	keys := make([]int, 0, len(this.gameList))
+
+	this.NodeLock.Lock()
+
+	// Get all keys of gameList
+	for k := range this.gameList {
+		keys = append(keys, k)
+	}
+
+	fmt.Println("Keys:", keys)
+
+	/*
+		for k := range keys {
+			clients := this.gameList[k]
+
+			for c := range clients {
+				// Trigger startGame() in c
+			}
+		}
+	*/
+
+	// For each client in a game room, trigger startGame() in those clients
+
+	this.NodeLock.Unlock()
+}
+
+func (this *Context) Join(args *Node, reply *ValReply) error {
+	log.Println("Join successfully")
+	log.Println("Client:", args.Id)
+	log.Println("ID:", args.Ip)
+
+	return nil
+}
+
+/////////// Helper methods
+
 // this is called when a node joins, it handles adding the node to lists
-func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
+func AddNode(this *Context, hello *Node, conn net.Conn) {
 	DebugPrint(1, "New Client"+hello.Id)
 
 	this.NodeLock.Lock()
@@ -91,7 +148,7 @@ func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
 }
 
 // called when a new node connects, and processes responses from it
-func HandleConnect(this *KeyValService, conn net.Conn) {
+func HandleConnect(this *Context, conn net.Conn) {
 	buffer := make([]byte, 1024)
 
 	// reading the hello message
@@ -101,7 +158,7 @@ func HandleConnect(this *KeyValService, conn net.Conn) {
 		return
 	}
 	// process the hello message
-	var hello HelloMessage
+	var hello Node
 	e = json.Unmarshal(buffer[0:n], &hello)
 	if e != nil {
 		fmt.Println("Unmarshal hello:", e)
@@ -110,8 +167,6 @@ func HandleConnect(this *KeyValService, conn net.Conn) {
 
 	// store data locally
 	AddNode(this, &hello, conn)
-
-	DebugPrint(1, "SUCCESS")
 }
 
 func main() {
@@ -122,32 +177,48 @@ func main() {
 	}
 
 	// setup the kv service
-	kvService := &KeyValService{
+	context := &Context{
 		NodeList:  make(map[string]net.Conn),
 		MessageId: 0,
 		roomID:    0,
 		roomLimit: 2,
-		gameList:  make(map[int]map[string]struct{}), // eww
+		gameList:  make(map[int]map[string]struct{}),
 	}
+
+	/* Start the timer
+	ticker := time.NewTicker(5 * time.Second)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				// Trigger startGame on client side and reset timer
+				fmt.Println("Tick at", <-ticker.C)
+
+				// Keep track of users whose gameRoom is not full
+
+				// Reset timer and keep all clients
+
+				context.notifyClient()
+				context.endSession()
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+	*/
 
 	// get arguments
-	msAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
+	rpcAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
 	FatalError(e)
 
-	// Listening to Clients
 	DebugPrint(1, "Starting MS server")
-	conn, e := net.Listen("tcp", msAddr.String())
-	defer conn.Close()
+	rpc.Register(context)
+	listener, e := net.Listen("tcp", rpcAddr.String())
 	FatalError(e)
 
-	for {
-		fmt.Println("Reading once from TCP connection")
-		newConn, e := conn.Accept()
-		if e != nil {
-			fmt.Println("Error accepting: ", e)
-			continue
-		}
-		go HandleConnect(kvService, newConn)
-	}
+	// start the rpc side
+	rpc.Accept(listener)
 	DebugPrint(1, "Exiting")
 }
