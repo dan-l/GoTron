@@ -59,24 +59,6 @@ type HelloMessage struct {
 	UnavailableKeys []string
 }
 
-func SplitMessages(raw []byte) [][]byte {
-	ret := make([][]byte, 0)
-
-	base := -1
-	for index, val := range raw {
-		if val == '{' {
-			base = index
-		} else if val == '}' {
-			ret = append(ret, raw[base:index+1])
-		}
-	}
-
-	return ret
-}
-
-func HandleMessage(this *KeyValService, message Message) {
-}
-
 // this is called when a node joins, it handles adding the node to lists
 func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
 	DebugPrint(1, "New Client"+hello.Id)
