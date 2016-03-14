@@ -23,7 +23,7 @@ var msService *rpc.Client
 // This RPC function is triggered when a game is ready to begin.
 func (nc *NodeClient) StartGame(args *GameArgs) error {
 	nodes = args.nodeList
-	log.Println("Starting game with nodes:" + nodes)
+	log.Println("Starting game with nodes:")
 	return nil
 }
 
@@ -35,8 +35,8 @@ func (nc *NodeClient) Message(response *ValReply) error {
 
 func msRpcServce() {
 	defer waitGroup.Done()
-	nodeService := new(NodeService)
-	rpc.Register(nodeService)
+	nodeClient := new(NodeClient)
+	rpc.Register(nodeClient)
 	nodeListener, e := net.Listen("tcp", nodeRpcAddr)
 	if e != nil {
 		log.Fatal("listen error:", e)
