@@ -34,7 +34,6 @@ type Location struct {
 type Node struct {
 	id    string
 	ip    string
-	alive bool
 }
 
 const (
@@ -51,6 +50,19 @@ var nodes []Node          // All nodes in the game.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
+
+var BOARD = [10][10]string{
+	[10]string{"", "", "", "", "", "", "", "", "", ""},
+	[10]string{"", "p1", "", "", "", "", "", "", "p3", ""},
+	[10]string{"", "", "", "", "", "", "", "", "", ""},
+	[10]string{"", "", "", "", "", "", "", "", "", ""},
+	[10]string{"", "p5", "", "", "", "", "", "", "", ""},
+	[10]string{"", "", "", "", "", "", "", "", "p6", ""},
+	[10]string{"", "", "", "", "", "", "", "", "", ""},
+	[10]string{"", "", "", "", "", "", "", "", "", ""},
+	[10]string{"", "p4", "", "", "", "", "", "", "p2", ""},
+	[10]string{"", "", "", "", "", "", "", "", "", ""},
+}
 
 func main() {
 	if len(os.Args) < 5 {
