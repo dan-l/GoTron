@@ -6,6 +6,7 @@ import (
 	"net"
 	//"net/rpc"
 	"encoding/json"
+	//"github.com/deckarep/golang-set"
 	"os"
 	"sync"
 )
@@ -17,11 +18,11 @@ type KeyValService struct {
 	NodeLock sync.RWMutex
 
 	NodeList map[string]net.Conn
-	gameList map[int32]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
+	gameList map[int]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
 
-	MessageId int32 // atomically incremented message id
-	roomID    int32 // atomically incremented game room id
-	roomLimit int32
+	MessageId int // atomically incremented message id
+	roomID    int // atomically incremented game room id
+	roomLimit int
 }
 
 type Message struct {
@@ -79,14 +80,28 @@ func HandleMessage(this *KeyValService, message Message) {
 // this is called when a node joins, it handles adding the node to lists
 func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
 	DebugPrint(1, "New Client"+hello.Id)
-	//keys := make(map[string]struct{})
-
-	// Look at the current roomID & check corresponding room
-	fmt.Println("number of players:", this.gameList[this.roomLimit])
 
 	this.NodeLock.Lock()
+
+	// Check if room exists
+	_, ok := this.gameList[this.roomID]
+	if !ok {
+		this.gameList[this.roomID] = make(map[string]struct{})
+	}
+
+	// Check if room is full
+	if len(this.gameList[this.roomID]) >= this.roomLimit {
+		this.roomID++
+		this.gameList[this.roomID] = make(map[string]struct{})
+	}
+
+	// Add this client to the gameRoom
+	this.gameList[this.roomID][hello.Id] = EmptyStruct
+
+	// Look at the current roomID & check corresponding room
+	fmt.Println("number of players:", this.gameList)
+
 	this.NodeList[hello.Id] = conn
-	//this.gameList[this.roomID] =
 
 	fmt.Println("NodeList:", this.NodeList)
 
@@ -129,8 +144,8 @@ func main() {
 		NodeList:  make(map[string]net.Conn),
 		MessageId: 0,
 		roomID:    0,
-		roomLimit: 5,
-		gameList:  make(map[int32]map[string]struct{}), // eww
+		roomLimit: 2,
+		gameList:  make(map[int]map[string]struct{}), // eww
 	}
 
 	// get arguments
