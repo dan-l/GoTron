@@ -42,7 +42,7 @@ func FatalError(e error) {
 // 2 - message aggreagtion
 // 3 - Messages being sent
 // 4 - Everything
-const DebugLevel int = 1
+const DebugLevel int = 4
 
 func DebugPrint(level int, str string) {
 	if level <= DebugLevel {
@@ -80,7 +80,7 @@ func HandleMessage(this *KeyValService, message Message) {
 }
 
 // called when a new node connects, and processes responses from it
-func HandleConnect(this *KeyValService, conn net.Conn) {
+func HandleConnect(this *KeyValService, conn net.Conn, done chan bool) {
 	buffer := make([]byte, 1024)
 
 	// reading the hello message
@@ -103,10 +103,11 @@ func HandleConnect(this *KeyValService, conn net.Conn) {
 	AddNode(this, &hello, conn)
 
 	DebugPrint(1, "SUCCESS")
+	done <- true
 }
 
 // the listening loop
-func ListenConnections(this *KeyValService, addr string) {
+func ListenConnections(this *KeyValService, addr string, done chan bool) {
 	conn, e := net.Listen("tcp", addr)
 	defer conn.Close()
 	FatalError(e)
@@ -118,11 +119,12 @@ func ListenConnections(this *KeyValService, addr string) {
 			continue
 		}
 
-		go HandleConnect(this, newConn)
+		go HandleConnect(this, newConn, done)
 	}
 }
 
 func main() {
+	// go run MS.go :4421
 	if len(os.Args) != 2 {
 		fmt.Printf("Usage: %s <ms addr><r>\n", os.Args[0])
 		os.Exit(-1)
@@ -139,5 +141,8 @@ func main() {
 	msAddr := os.Args[1]
 
 	// Listening to Clients
-	go ListenConnections(kvService, msAddr)
+	done := make(chan bool, 1)
+	DebugPrint(1, "Starting MS server")
+	go ListenConnections(kvService, msAddr, done)
+	<-done
 }
