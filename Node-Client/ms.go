@@ -6,22 +6,30 @@ import (
 	"net/rpc"
 )
 
-type NodeService int
+type NodeClient int
 
 type ValReply struct {
 	msg string
 }
 
 type GameArgs struct {
-	nodeList []string
+	nodeList []Node
 }
 
 var nodeRpcAddr string
 var msServerAddr string // Matchmaking server IP.
 var msService *rpc.Client
 
-func (kvs *NodeService) StartGame(args *GameArgs, reply *ValReply) error {
-	log.Println("Starting game")
+// This RPC function is triggered when a game is ready to begin.
+func (nc *NodeClient) StartGame(args *GameArgs) error {
+	nodes = args.nodeList
+	log.Println("Starting game with nodes:" + nodes)
+	return nil
+}
+
+// This RPC function serves as a way for the Matchmaking service to send text to this node.
+func (nc *NodeClient) Message(response *ValReply) error {
+	log.Println("Received message:" + response.msg)
 	return nil
 }
 
