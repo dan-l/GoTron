@@ -36,14 +36,15 @@ func (kvs *MatchMakingService) StartGame(args *GameArgs, reply *ValReply) error 
 	return nil
 }
 
-type HelloMessage struct {
-	Id string
+type Node struct {
+	Id string // Napon
+	Ip string // ip addr of Napon
 }
 
 func main() {
 	// go run client.go clientIP msIPport
 	// go run client.go :4421 :4431
-	if len(os.Args) != 3 {
+	if len(os.Args) != 4 {
 		fmt.Println("Not enough arguments")
 		os.Exit(-1)
 	}
@@ -75,7 +76,7 @@ func main() {
 	defer client.Close()
 
 	var reply *ValReply = &ValReply{Val: ""}
-	e = client.Call(RpcJoin, &HelloMessage{Id: localAddr.String()}, reply)
+	e = client.Call(RpcJoin, &Node{Id: os.Args[3], Ip: localAddr.String()}, reply)
 	CheckError(e, 6)
 
 	fmt.Println("Reply: ", reply.Val)

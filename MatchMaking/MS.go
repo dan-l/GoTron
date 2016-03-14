@@ -42,8 +42,9 @@ func FatalError(e error) {
 /////////// RPC connection
 
 // When clients first connect to the MS server
-type HelloMessage struct {
-	Id string
+type Node struct {
+	Id string // Napon
+	Ip string // ip addr of Napon
 }
 
 type GameArgs struct {
@@ -105,9 +106,10 @@ func (this *Context) notifyClient() {
 	this.NodeLock.Unlock()
 }
 
-func (this *Context) Join(args *HelloMessage, reply *ValReply) error {
+func (this *Context) Join(args *Node, reply *ValReply) error {
 	log.Println("Join successfully")
 	log.Println("Client:", args.Id)
+	log.Println("ID:", args.Ip)
 
 	return nil
 }
@@ -115,7 +117,7 @@ func (this *Context) Join(args *HelloMessage, reply *ValReply) error {
 /////////// Helper methods
 
 // this is called when a node joins, it handles adding the node to lists
-func AddNode(this *Context, hello *HelloMessage, conn net.Conn) {
+func AddNode(this *Context, hello *Node, conn net.Conn) {
 	DebugPrint(1, "New Client"+hello.Id)
 
 	this.NodeLock.Lock()
@@ -156,7 +158,7 @@ func HandleConnect(this *Context, conn net.Conn) {
 		return
 	}
 	// process the hello message
-	var hello HelloMessage
+	var hello Node
 	e = json.Unmarshal(buffer[0:n], &hello)
 	if e != nil {
 		fmt.Println("Unmarshal hello:", e)
