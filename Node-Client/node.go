@@ -45,9 +45,8 @@ var directions map[string]string
 var playerMap map[string]string
 
 func main() {
-	if len(os.Args) < 5 {
-		log.Println("usage: NodeClient [nodeid] [nodeAddr] [nodeRpcAddr] [msServerAddr] [httpServerAddr]")
-		log.Println("[nodeid] unique id for each player")
+	if len(os.Args) < 4 {
+		log.Println("usage: NodeClient [nodeAddr] [nodeRpcAddr] [msServerAddr] [httpServerAddr]")
 		log.Println("[nodeAddr] the udp ip:port node is listening to")
 		log.Println("[nodeRpcAddr] the rpc ip:port node is hosting for ms server")
 		log.Println("[msServerAddr] the rpc ip:port of matchmaking server node is connecting to")
@@ -55,9 +54,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	nodeId, nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr = os.Args[1], os.Args[2], os.Args[3], os.Args[4], os.Args[5]
+	nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr = os.Args[1], os.Args[2], os.Args[3], os.Args[4]
 
-	log.Println(nodeId, nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
+	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
 
 	waitGroup.Add(3) // Add internal process.
