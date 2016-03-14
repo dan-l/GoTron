@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
+	"net/rpc"
 	"os"
 	"sync"
 	"time"
@@ -103,6 +105,13 @@ func (this *Context) notifyClient() {
 	this.NodeLock.Unlock()
 }
 
+func (this *Context) Join(args *HelloMessage, reply *ValReply) error {
+	log.Println("Join successfully")
+	return nil
+}
+
+/////////// Helper methods
+
 // this is called when a node joins, it handles adding the node to lists
 func AddNode(this *Context, hello *HelloMessage, conn net.Conn) {
 	DebugPrint(1, "New Client"+hello.Id)
@@ -154,7 +163,6 @@ func HandleConnect(this *Context, conn net.Conn) {
 
 	// store data locally
 	AddNode(this, &hello, conn)
-
 }
 
 func main() {
@@ -173,7 +181,7 @@ func main() {
 		gameList:  make(map[int]map[string]struct{}),
 	}
 
-	// Start the timer
+	/* Start the timer
 	ticker := time.NewTicker(5 * time.Second)
 	quit := make(chan struct{})
 	go func() {
@@ -195,25 +203,18 @@ func main() {
 			}
 		}
 	}()
+	*/
 
 	// get arguments
-	msAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
+	rpcAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
 	FatalError(e)
 
-	// Listening to Clients
 	DebugPrint(1, "Starting MS server")
-	conn, e := net.Listen("tcp", msAddr.String())
-	defer conn.Close()
+	rpc.Register(context)
+	listener, e := net.Listen("tcp", rpcAddr.String())
 	FatalError(e)
 
-	for {
-		fmt.Println("Reading once from TCP connection")
-		newConn, e := conn.Accept()
-		if e != nil {
-			fmt.Println("Error accepting: ", e)
-			continue
-		}
-		go HandleConnect(context, newConn)
-	}
+	// start the rpc side
+	rpc.Accept(listener)
 	DebugPrint(1, "Exiting")
 }
