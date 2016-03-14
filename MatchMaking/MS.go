@@ -10,16 +10,18 @@ import (
 	"sync"
 )
 
+var EmptyStruct struct{}
+
 // main context
 type KeyValService struct {
 	NodeLock sync.RWMutex
+
 	NodeList map[string]net.Conn
-	// lame solution, k = node, v = keys
-	KeyLocations map[string]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
+	gameList map[int32]map[string]struct{} // note: a map[string]struct{} acts list a Set<String> from Java
 
 	MessageId int32 // atomically incremented message id
-
-	UnavailableKeys map[string]struct{}
+	roomID    int32 // atomically incremented game room id
+	roomLimit int32
 }
 
 type Message struct {
@@ -56,11 +58,6 @@ type HelloMessage struct {
 	UnavailableKeys []string
 }
 
-// this is called when a node joins, it handles adding the node to lists and adding the keys it knows about
-func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
-
-}
-
 func SplitMessages(raw []byte) [][]byte {
 	ret := make([][]byte, 0)
 
@@ -77,6 +74,23 @@ func SplitMessages(raw []byte) [][]byte {
 }
 
 func HandleMessage(this *KeyValService, message Message) {
+}
+
+// this is called when a node joins, it handles adding the node to lists
+func AddNode(this *KeyValService, hello *HelloMessage, conn net.Conn) {
+	DebugPrint(1, "New Client"+hello.Id)
+	//keys := make(map[string]struct{})
+
+	// Look at the current roomID & check corresponding room
+	fmt.Println("number of players:", this.gameList[this.roomLimit])
+
+	this.NodeLock.Lock()
+	this.NodeList[hello.Id] = conn
+	//this.gameList[this.roomID] =
+
+	fmt.Println("NodeList:", this.NodeList)
+
+	this.NodeLock.Unlock()
 }
 
 // called when a new node connects, and processes responses from it
@@ -97,8 +111,6 @@ func HandleConnect(this *KeyValService, conn net.Conn) {
 		return
 	}
 
-	DebugPrint(3, "KV->FE: "+string(buffer))
-
 	// store data locally
 	AddNode(this, &hello, conn)
 
@@ -114,9 +126,11 @@ func main() {
 
 	// setup the kv service
 	kvService := &KeyValService{
-		NodeList:        make(map[string]net.Conn),
-		KeyLocations:    make(map[string]map[string]struct{}), // eww
-		UnavailableKeys: make(map[string]struct{}),
+		NodeList:  make(map[string]net.Conn),
+		MessageId: 0,
+		roomID:    0,
+		roomLimit: 5,
+		gameList:  make(map[int32]map[string]struct{}), // eww
 	}
 
 	// get arguments
@@ -138,5 +152,5 @@ func main() {
 		}
 		go HandleConnect(kvService, newConn)
 	}
-
+	DebugPrint(1, "Exiting")
 }
