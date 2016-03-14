@@ -80,7 +80,7 @@ func HandleMessage(this *KeyValService, message Message) {
 }
 
 // called when a new node connects, and processes responses from it
-func HandleConnect(this *KeyValService, conn net.Conn, done chan bool) {
+func HandleConnect(this *KeyValService, conn net.Conn) {
 	buffer := make([]byte, 1024)
 
 	// reading the hello message
@@ -103,30 +103,12 @@ func HandleConnect(this *KeyValService, conn net.Conn, done chan bool) {
 	AddNode(this, &hello, conn)
 
 	DebugPrint(1, "SUCCESS")
-	done <- true
-}
-
-// the listening loop
-func ListenConnections(this *KeyValService, addr string, done chan bool) {
-	conn, e := net.Listen("tcp", addr)
-	defer conn.Close()
-	FatalError(e)
-
-	for {
-		newConn, e := conn.Accept()
-		if e != nil {
-			fmt.Println("Error accepting: ", e)
-			continue
-		}
-
-		go HandleConnect(this, newConn, done)
-	}
 }
 
 func main() {
 	// go run MS.go :4421
 	if len(os.Args) != 2 {
-		fmt.Printf("Usage: %s <ms addr><r>\n", os.Args[0])
+		fmt.Println("Not enough arguments")
 		os.Exit(-1)
 	}
 
@@ -138,11 +120,23 @@ func main() {
 	}
 
 	// get arguments
-	msAddr := os.Args[1]
+	msAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
+	FatalError(e)
 
 	// Listening to Clients
-	done := make(chan bool, 1)
 	DebugPrint(1, "Starting MS server")
-	go ListenConnections(kvService, msAddr, done)
-	<-done
+	conn, e := net.Listen("tcp", msAddr.String())
+	defer conn.Close()
+	FatalError(e)
+
+	for {
+		fmt.Println("Reading once from TCP connection")
+		newConn, e := conn.Accept()
+		if e != nil {
+			fmt.Println("Error accepting: ", e)
+			continue
+		}
+		go HandleConnect(kvService, newConn)
+	}
+
 }

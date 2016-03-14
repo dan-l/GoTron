@@ -41,21 +41,15 @@ func main() {
 	// go run client.go clientIP msIPport
 	// go run client.go :4421 :4431
 	if len(os.Args) != 3 {
-		fmt.Printf("Usage: %s <ip:port>\n", os.Args[0])
-		fmt.Println("\t<ip:port> - The IP and port of the MatchMaking rpc server to connect to")
+		fmt.Println("Not enough arguments")
 		os.Exit(-1)
 	}
 
 	// Setting arguments
-	clientIP := os.Args[1]
-	msIpPort := os.Args[2]
-
-	fmt.Println(clientIP, " and ", msIpPort)
-
-	localAddr, e := net.ResolveTCPAddr("tcp", clientIP)
+	localAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
 	FatalError(e)
 
-	remoteAddr, e := net.ResolveTCPAddr("tcp", msIpPort)
+	remoteAddr, e := net.ResolveTCPAddr("tcp", os.Args[2])
 	FatalError(e)
 
 	//Exporting methods to be used by MS server
@@ -81,7 +75,7 @@ func main() {
 		fmt.Println("Fail to connect")
 	}
 
-	hello := &HelloMessage{Id: clientIP}
+	hello := &HelloMessage{Id: localAddr.String()}
 	bHello, e := json.Marshal(hello)
 	FatalError(e)
 	//fmt.Println("Client->MS:", bHello[:])
