@@ -21,22 +21,22 @@ var msServerAddr string // Matchmaking server IP.
 var msService *rpc.Client
 
 // This RPC function is triggered when a game is ready to begin.
-func (nc *NodeClient) StartGame(args *GameArgs) error {
+func (nc *NodeClient) StartGame(args *GameArgs, response *ValReply) error {
 	nodes = args.nodeList
-	log.Println("Starting game with nodes:" + nodes)
+	log.Println("Starting game with nodes:")
 	return nil
 }
 
 // This RPC function serves as a way for the Matchmaking service to send text to this node.
-func (nc *NodeClient) Message(response *ValReply) error {
+func (nc *NodeClient) Message(args *GameArgs, response *ValReply) error {
 	log.Println("Received message:" + response.msg)
 	return nil
 }
 
 func msRpcServce() {
 	defer waitGroup.Done()
-	nodeService := new(NodeService)
-	rpc.Register(nodeService)
+	nodeClient := new(NodeClient)
+	rpc.Register(nodeClient)
 	nodeListener, e := net.Listen("tcp", nodeRpcAddr)
 	if e != nil {
 		log.Fatal("listen error:", e)
