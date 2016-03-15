@@ -1,13 +1,13 @@
 package main
 
 import (
-	// "encoding/json"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"sync"
-	// "time"
+	"time"
 )
 
 type Pos struct {
@@ -36,6 +36,7 @@ var nodeId string         // Name of client.
 var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
 var nodes []Node          // All nodes in the game.
+var myNode Node           // My node.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
@@ -58,6 +59,18 @@ func main() {
 
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
+
+	// ============= FOR TESTING PURPOSES ============== //
+	// Add myself.
+	nodeId = "meeee"
+	myNode = Node{Id: nodeId, Ip: nodeAddr, currLoc: Pos{1, 1}}
+
+	// Add some enemies.
+	client2 := Node{Id: "foo2", Ip: ":8768"}
+	client3 := Node{Id: "foo3", Ip: ":8769"}
+
+	nodes = append(nodes, myNode, client2, client3)
+	// ================================================= //
 
 	waitGroup.Add(3) // Add internal process.
 	go msRpcServce()
@@ -105,21 +118,18 @@ func init() {
 // Update peers with node's current location.
 func intervalUpdate() {
 	defer waitGroup.Done()
-	// for {
-	// 	// TODO should not be doing this loop everytime! smh
-	// 	for _, node := range nodes {
-	// 		if node.Id == nodeId {
-	// 			currentLocationJSON, err := json.Marshal(node.currLoc)
-	// 			checkErr(err)
-	// 			for _, node := range nodes {
-	// 				if node.Id != nodeId {
-	// 					sendUDPPacket(node.Ip, currentLocationJSON)
-	// 				}
-	// 			}
-	// 			time.Sleep(500 * time.Millisecond)
-	// 		}
-	// 	}
-	// }
+	for {
+		currentLocationJSON, err := json.Marshal(myNode.currLoc)
+		log.Println("Data to send: " + fmt.Sprintln(myNode.currLoc))
+		checkErr(err)
+		for _, node := range nodes {
+			if node.Id != nodeId {
+				log.Println("Sending interval update to " + node.Id + " at ip " + node.Ip)
+				sendUDPPacket(node.Ip, currentLocationJSON)
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 // Send data to ip via UDP.
