@@ -6,6 +6,17 @@ const PLAYER_RECT_HEIGHT = 10;
 const gSocket = io();
 const gCanvas = new fabric.Canvas("mainCanvas");
 
+// TODO: Remove this at some point. It's here just so we know when the HTTP
+//       and JS layers work.
+let gPlayerRect = new fabric.Rect({
+  left: 100,
+  top: 100,
+  fill: "red",
+  width: PLAYER_RECT_WIDTH,
+  height: PLAYER_RECT_HEIGHT,
+});
+gCanvas.add(gPlayerRect);
+
 window.onkeydown = function(event) {
   switch (event.key) {
     case "w":
