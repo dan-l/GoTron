@@ -1,13 +1,13 @@
 package main
 
 import (
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"sync"
-	"time"
+	// "time"
 )
 
 type Pos struct {
@@ -105,21 +105,21 @@ func init() {
 // Update peers with node's current location.
 func intervalUpdate() {
 	defer waitGroup.Done()
-	for {
-		// TODO should not be doing this loop everytime! smh
-		for _, node := range nodes {
-			if node.Id == nodeId {
-				currentLocationJSON, err := json.Marshal(node.currLoc)
-				checkErr(err)
-				for _, node := range nodes {
-					if node.Id != nodeId {
-						sendUDPPacket(node.Ip, currentLocationJSON)
-					}
-				}
-				time.Sleep(500 * time.Millisecond)
-			}
-		}
-	}
+	// for {
+	// 	// TODO should not be doing this loop everytime! smh
+	// 	for _, node := range nodes {
+	// 		if node.Id == nodeId {
+	// 			currentLocationJSON, err := json.Marshal(node.currLoc)
+	// 			checkErr(err)
+	// 			for _, node := range nodes {
+	// 				if node.Id != nodeId {
+	// 					sendUDPPacket(node.Ip, currentLocationJSON)
+	// 				}
+	// 			}
+	// 			time.Sleep(500 * time.Millisecond)
+	// 		}
+	// 	}
+	// }
 }
 
 // Send data to ip via UDP.
