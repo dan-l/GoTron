@@ -12,6 +12,7 @@ import (
 )
 
 const sessionDelay time.Duration = 250 * time.Millisecond
+const RpcStartGame string = "NodeService.StartGame"
 
 /////////// Debugging Helper
 
@@ -37,6 +38,13 @@ func FatalError(e error) {
 	}
 }
 
+func CheckError(err error, n int) {
+	if err != nil {
+		fmt.Println(n, ": ", err)
+		os.Exit(n)
+	}
+}
+
 /////////// RPC connection
 
 // When clients first connect to the MS server
@@ -46,7 +54,7 @@ type Node struct {
 }
 
 type GameArgs struct {
-	nodeList []Node // List of peer a node should talk to
+	NodeList []Node // List of peer a node should talk to
 }
 
 // Reply from client
@@ -58,52 +66,41 @@ type ValReply struct {
 type Context struct {
 	NodeLock sync.RWMutex
 
-	gameList map[int][]Node // note: a map[string]struct{} acts list a Set<String> from Java
-
-	MessageId int // atomically incremented message id
-	roomID    int // atomically incremented game room id
+	gameRoom  []Node // the only one game room contains all existing players
+	roomID    int    // atomically incremented game room id
 	roomLimit int
 }
 
 // Reset context for the next session
 func (this *Context) endSession() {
 	this.NodeLock.Lock()
-
+	this.gameRoom = make([]Node, 0)
 	this.NodeLock.Unlock()
 }
 
 // Notify all cients in current session about other players in the same room
-func (this *Context) notifyClient() {
-	//keys := make([]int, 0, len(this.gameList))
-
+func (this *Context) startGame() {
 	this.NodeLock.Lock()
-
-	/* Get all keys of gameList
-	for k := range this.gameList {
-		keys = append(keys, k)
+	for _, client := range this.gameRoom {
+		c, e := rpc.Dial("tcp", client.Ip)
+		CheckError(e, 1)
+		var reply *ValReply = &ValReply{Val: ""}
+		e = c.Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
+		CheckError(e, 6)
+		c.Close()
 	}
-
-	fmt.Println("Keys:", keys)
-
-	/*
-		for k := range keys {
-			clients := this.gameList[k]
-
-			for c := range clients {
-				// Trigger startGame() in c
-			}
-		}
-	*/
-
-	// For each client in a game room, trigger startGame() in those clients
-
 	this.NodeLock.Unlock()
-
 }
 
 func (this *Context) Join(node *Node, reply *ValReply) error {
 
 	AddNode(this, node)
+
+	// Check if the room is full
+	if len(this.gameRoom) >= this.roomLimit {
+		this.startGame()
+		this.endSession()
+	}
 
 	return nil
 }
@@ -113,28 +110,12 @@ func (this *Context) Join(node *Node, reply *ValReply) error {
 // this is called when a node joins, it handles adding the node to lists
 func AddNode(this *Context, node *Node) {
 	DebugPrint(1, "New Client "+node.Id)
-	fmt.Println(node)
-
 	this.NodeLock.Lock()
 
-	// Check if room exists
-	_, ok := this.gameList[this.roomID]
-	if !ok {
-		this.gameList[this.roomID] = make([]Node, 0)
-	}
-
-	// Check if room is full
-	if len(this.gameList[this.roomID]) >= this.roomLimit {
-		this.roomID++
-		this.gameList[this.roomID] = make([]Node, 0)
-	}
-
 	// Add this client to the gameRoom
-	this.gameList[this.roomID] = append(this.gameList[this.roomID], *node)
+	this.gameRoom = append(this.gameRoom, *node)
 
-	// Look at the current roomID & check corresponding room
-	fmt.Println("number of players:", this.gameList)
-
+	fmt.Println("gameRoom:", this.gameRoom, " len is ", len(this.gameRoom))
 	this.NodeLock.Unlock()
 }
 
@@ -147,10 +128,9 @@ func main() {
 
 	// setup the kv service
 	context := &Context{
-		MessageId: 0,
 		roomID:    0,
 		roomLimit: 2,
-		gameList:  make(map[int][]Node),
+		gameRoom:  make([]Node, 0),
 	}
 
 	/* Start the timer
@@ -167,7 +147,7 @@ func main() {
 
 				// Reset timer and keep all clients
 
-				context.notifyClient()
+				context.startGame()
 				context.endSession()
 			case <-quit:
 				ticker.Stop()

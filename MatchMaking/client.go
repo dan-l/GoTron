@@ -20,7 +20,14 @@ func CheckError(err error, n int) {
 	}
 }
 
-type MatchMakingService int
+type NodeService int
+
+func (kvs *NodeService) StartGame(args *GameArgs, reply *ValReply) error {
+	log.Println("Starting game")
+	fmt.Println("nodelist:", args.NodeList)
+	reply.Val = "ok"
+	return nil
+}
 
 // Reply from MS server
 type ValReply struct {
@@ -28,12 +35,7 @@ type ValReply struct {
 }
 
 type GameArgs struct {
-	nodeList []string
-}
-
-func (kvs *MatchMakingService) StartGame(args *GameArgs, reply *ValReply) error {
-	log.Println("Starting game")
-	return nil
+	NodeList []Node
 }
 
 type Node struct {
@@ -58,15 +60,14 @@ func main() {
 
 	//Exporting methods to be used by MS server
 	go func() {
-		// Export MatchMakingService to allow MS to trigger start game here
-		msService := new(MatchMakingService)
-		rpc.Register(msService)
-		msListener, e := net.Listen("tcp", localAddr.String())
+		nodeService := new(NodeService)
+		rpc.Register(nodeService)
+		nodeListener, e := net.Listen("tcp", localAddr.String())
 		if e != nil {
 			log.Fatal("listen error:", e)
 		}
-		log.Println("Listening to ms server")
-		conn, _ := msListener.Accept()
+		log.Println("Listening for ms server at ", localAddr.String())
+		conn, _ := nodeListener.Accept()
 		rpc.ServeConn(conn)
 	}()
 
@@ -80,6 +81,9 @@ func main() {
 	CheckError(e, 6)
 
 	fmt.Println("Reply: ", reply.Val)
+	for {
+
+	}
 }
 
 // Level for printing
