@@ -45,7 +45,7 @@ type Node struct {
 
 func main() {
 	// go run client.go clientIP msIPport
-	// go run client.go :4421 :4431
+	// go run client.go :4421 :4431 Hi
 	if len(os.Args) != 4 {
 		fmt.Println("Not enough arguments")
 		os.Exit(-1)

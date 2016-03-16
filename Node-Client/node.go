@@ -52,7 +52,7 @@ var directions map[string]string
 var playerMap map[string]string
 
 func main() {
-	if len(os.Args) < 4 {
+	if len(os.Args) != 5 {
 		log.Println("usage: NodeClient [nodeAddr] [nodeRpcAddr] [msServerAddr] [httpServerAddr]")
 		log.Println("[nodeAddr] the udp ip:port node is listening to")
 		log.Println("[nodeRpcAddr] the rpc ip:port node is hosting for ms server")
@@ -61,7 +61,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr = os.Args[1], os.Args[2], os.Args[3], os.Args[4]
+	nodeAddr, nodeRpcAddr, msServerAddr = os.Args[1], os.Args[2], os.Args[3]
+
+	httpServerTcpAddr, err := net.ResolveTCPAddr("tcp", os.Args[4])
+	checkErr(err)
+	httpServerAddr = httpServerTcpAddr.String()
 
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
@@ -72,8 +76,8 @@ func main() {
 	myNode = Node{Id: nodeId, Ip: nodeAddr, currLoc: &Pos{1, 1}}
 
 	// Add some enemies. TODO: currLoc for peers should be initialized elsewhere.
-	client2 := Node{Id: "foo2", Ip: ":8768", currLoc: &Pos{8, 8}}
-	client3 := Node{Id: "foo3", Ip: ":8769", currLoc: &Pos{8, 1}}
+	client2 := Node{Id: "foo2", Ip: "localhost:8768", currLoc: &Pos{8, 8}}
+	client3 := Node{Id: "foo3", Ip: "localhost:8769", currLoc: &Pos{8, 1}}
 
 	nodes = append(nodes, myNode, client2, client3)
 

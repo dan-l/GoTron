@@ -3,7 +3,7 @@ package main
 import (
 	//"encoding/json"
 	"fmt"
-	//"log"
+	"log"
 	"net"
 	"net/rpc"
 	"os"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const sessionDelay time.Duration = 250 * time.Millisecond
+const sessionDelay time.Duration = 5 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 
 /////////// Debugging Helper
@@ -69,13 +69,7 @@ type Context struct {
 	gameRoom  []Node // the only one game room contains all existing players
 	roomID    int    // atomically incremented game room id
 	roomLimit int
-}
-
-// Reset context for the next session
-func (this *Context) endSession() {
-	this.NodeLock.Lock()
-	this.gameRoom = make([]Node, 0)
-	this.NodeLock.Unlock()
+	gameTimer *time.Timer // timer until game start
 }
 
 // Notify all cients in current session about other players in the same room
@@ -89,6 +83,13 @@ func (this *Context) startGame() {
 		CheckError(e, 6)
 		c.Close()
 	}
+
+	// Clear the game room
+	this.gameRoom = make([]Node, 0)
+
+	// Reset the timer
+	this.gameTimer.Reset(sessionDelay)
+
 	this.NodeLock.Unlock()
 }
 
@@ -99,7 +100,7 @@ func (this *Context) Join(node *Node, reply *ValReply) error {
 	// Check if the room is full
 	if len(this.gameRoom) >= this.roomLimit {
 		this.startGame()
-		this.endSession()
+
 	}
 
 	return nil
@@ -119,6 +120,17 @@ func AddNode(this *Context, node *Node) {
 	this.NodeLock.Unlock()
 }
 
+func ListenTimer(this *Context) {
+	for t := range this.gameTimer.C {
+		log.Println(t)
+
+		// Notify the clients that this session has ended
+
+		// Reset Timer
+		this.gameTimer.Reset(sessionDelay)
+	}
+}
+
 func main() {
 	// go run MS.go :4421
 	if len(os.Args) != 2 {
@@ -131,31 +143,10 @@ func main() {
 		roomID:    0,
 		roomLimit: 2,
 		gameRoom:  make([]Node, 0),
+		gameTimer: time.NewTimer(5 * time.Second),
 	}
 
-	/* Start the timer
-	ticker := time.NewTicker(5 * time.Second)
-	quit := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				// Trigger startGame on client side and reset timer
-				fmt.Println("Tick at", <-ticker.C)
-
-				// Keep track of users whose gameRoom is not full
-
-				// Reset timer and keep all clients
-
-				context.startGame()
-				context.endSession()
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-	*/
+	go ListenTimer(context)
 
 	// get arguments
 	rpcAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
