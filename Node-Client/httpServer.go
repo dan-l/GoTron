@@ -18,21 +18,21 @@ func httpServe() {
 		so.Join("chat")
 		so.On("playerMove", func(playerMove map[string]string) {
 			_, ok := playerMove["id"]
-            if !ok {
-                // TODO Output error message somewhere
-                return
-            }
+			if !ok {
+				// TODO Output error message somewhere
+				return
+			}
 
 			_, ok = playerMove["direction"]
-            if !ok {
-                // TODO Output error message somewhere
-                return
-            }
+			if !ok {
+				// TODO Output error message somewhere
+				return
+			}
 
-            // TODO: This exists as an interim step to getting full game state
-            //       transmitted back to the JS layer, and should be removed
-            //       later.
-            so.Emit("playerMoveEcho", playerMove);
+			// TODO: This exists as an interim step to getting full game state
+			//       transmitted back to the JS layer, and should be removed
+			//       later.
+			so.Emit("playerMoveEcho", playerMove)
 		})
 		so.On("disconnection", func() {
 			log.Println("on disconnect")

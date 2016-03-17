@@ -24,6 +24,7 @@ var msService *rpc.Client
 func (nc *NodeClient) StartGame(args *GameArgs, response *ValReply) error {
 	nodes = args.nodeList
 	log.Println("Starting game with nodes:")
+	// startGame() // in node.go, call when rpc is working
 	return nil
 }
 
@@ -52,9 +53,4 @@ func connectMs() {
 		log.Fatal("connect error:", err)
 	}
 	log.Println("Connected to matchmaking server", msService)
-}
-
-func notifyPeersDirChanged() {
-	// msService.Call("DirectionChanged")
-	// listen to socket io for direction changed topic
 }
