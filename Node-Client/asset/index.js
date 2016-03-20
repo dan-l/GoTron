@@ -15,8 +15,8 @@ const gCanvas = new fabric.Canvas("mainCanvas");
 // TODO: Remove this at some point. It's here just so we know when the HTTP
 //       and JS layers work.
 let gPlayerRect = new fabric.Rect({
-  left: 100,
-  top: 100,
+  left: 0,
+  top: 0,
   fill: "red",
   width: PLAYER_RECT_WIDTH,
   height: PLAYER_RECT_HEIGHT,
@@ -46,16 +46,25 @@ window.onkeydown = function(event) {
 };
 
 /**
- * Checks that the given pbject has all properties it is expected to have.
+ * Checks that the given object has all properties it is expected to have.
  *
  * @argument {Object} obj
  *           The object to validate.
  * @argument {String[]} expectedProps
  *           Properties the object should have.
  * @returns {Boolean}
- *          true, if it had all the expected properties. false otherwise.
+ *          true, if the given object was non-null and had all the expected
+ *          properties. false otherwise.
  */
 function objContainsProps(obj, expectedProps) {
+  if (!expectedProps) {
+    throw new Error("A non-null expectedProps must be provided");
+  }
+
+  if (!obj) {
+    return false;
+  }
+
   for (let expectedProp of expectedProps) {
     if (!(expectedProp in obj)) {
       return false;
@@ -65,34 +74,26 @@ function objContainsProps(obj, expectedProps) {
   return true;
 }
 
-// TODO: This exists as an interim step to getting full game state transmitted
-//       back to the JS layer, and should be removed later.
-function onPlayerMoveEcho(move) {
-  if (!objContainsProps(move, ["id", "direction"])) {
-    throw new Error("Move obj does not contain all expected props")
+// TODO: Document.
+function onGameStateUpdate(state) {
+  if (!(state instanceof Array)) {
+    throw new Error("Passed game state that isn't an array");
   }
 
-  if (move.id != gUserID) {
-    throw new Error("Should not happen in the current impl");
-  }
+  for (let y = 0; y < state.length; y ++) {
+    let row = state[y];
+    if (!(row instanceof Array)) {
+      throw new Error("Passed row that isn't an array");
+    }
 
-  switch (move.direction) {
-    case Direction.UP:
-      gPlayerRect.setTop(gPlayerRect.getTop() - gPlayerRect.getHeight());
-      break;
-    case Direction.LEFT:
-      gPlayerRect.setLeft(gPlayerRect.getLeft() - gPlayerRect.getHeight());
-      break;
-    case Direction.DOWN:
-      gPlayerRect.setTop(gPlayerRect.getTop() + gPlayerRect.getHeight());
-      break;
-    case Direction.RIGHT:
-      gPlayerRect.setLeft(gPlayerRect.getLeft() + gPlayerRect.getWidth());
-      break;
-    default:
-      return;
+    for (let x = 0; x < row.length; x++) {
+      if (state[y][x] == gUserID) {
+        gPlayerRect.setTop(y * gPlayerRect.getHeight());
+        gPlayerRect.setLeft(x * gPlayerRect.getWidth());
+      }
+    }
   }
 
   gCanvas.renderAll();
 }
-gSocket.on("playerMoveEcho", onPlayerMoveEcho);
+gSocket.on("gameStateUpdate", onGameStateUpdate);

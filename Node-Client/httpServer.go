@@ -7,6 +7,62 @@ import (
 	"net/http"
 )
 
+// A fake board for testing/bring up purposes.
+// TODO: Remove this once the necessary bring up is done.
+// TODO: The real board will use constants such as "p1" to track current player
+//       locations. We should handle that.
+var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE]string{
+	[BOARD_SIZE]string{"TEMP USER ID", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+}
+var playerPos Pos = Pos{0, 0}
+
+func intMax(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func intMin(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// Updates the internal state of the board, then returns the new state.
+func updateInternalState(direction string) [BOARD_SIZE][BOARD_SIZE]string {
+	var playerID string = httpServerFakeBoard[playerPos.Y][playerPos.X]
+
+	// Clear the current position.
+	// TODO: Implement trails.
+	httpServerFakeBoard[playerPos.Y][playerPos.X] = ""
+
+	if direction == "U" {
+		playerPos.Y = intMax(0, playerPos.Y-1)
+	} else if direction == "D" {
+		playerPos.Y = intMin(BOARD_SIZE-1, playerPos.Y+1)
+	} else if direction == "L" {
+		playerPos.X = intMax(0, playerPos.X-1)
+	} else if direction == "R" {
+		playerPos.X = intMin(BOARD_SIZE-1, playerPos.X+1)
+	}
+
+	// Set the new position.
+	httpServerFakeBoard[playerPos.Y][playerPos.X] = playerID
+
+	return httpServerFakeBoard
+}
+
 func httpServe() {
 	defer waitGroup.Done()
 	server, err := socketio.NewServer(nil)
@@ -23,16 +79,13 @@ func httpServe() {
 				return
 			}
 
-			_, ok = playerMove["direction"]
+			direction, ok := playerMove["direction"]
 			if !ok {
 				// TODO Output error message somewhere
 				return
 			}
 
-			// TODO: This exists as an interim step to getting full game state
-			//       transmitted back to the JS layer, and should be removed
-			//       later.
-			so.Emit("playerMoveEcho", playerMove)
+			so.Emit("gameStateUpdate", updateInternalState(direction))
 		})
 		so.On("disconnection", func() {
 			log.Println("on disconnect")
