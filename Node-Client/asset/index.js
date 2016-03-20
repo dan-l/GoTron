@@ -21,12 +21,11 @@ let gPlayerRect = new fabric.Rect({
   width: PLAYER_RECT_WIDTH,
   height: PLAYER_RECT_HEIGHT,
 });
-gCanvas.add(gPlayerRect);
 
 // TODO: Get the ID from user input.=
 let gUserID = "TEMP USER ID";
 
-window.onkeydown = function(event) {
+function handleKeyPress(event) {
   switch (event.key) {
     case "w":
       gSocket.emit("playerMove", {"id": gUserID, "direction": Direction.UP});
@@ -96,4 +95,13 @@ function onGameStateUpdate(state) {
 
   gCanvas.renderAll();
 }
-gSocket.on("gameStateUpdate", onGameStateUpdate);
+
+function main() {
+  gCanvas.add(gPlayerRect);
+
+  // Register handlers.
+  gSocket.on("gameStateUpdate", onGameStateUpdate);
+  window.onkeydown = handleKeyPress;
+}
+
+main();
