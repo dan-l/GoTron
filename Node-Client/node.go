@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -18,8 +19,9 @@ type Pos struct {
 // Peers
 type Node struct {
 	Id      string
-	Ip      string
-	currLoc Pos // internal use, so that it doesn't get exported during marshalling
+	Ip      string // udp port this node is listening to
+	RpcAddr string // rpc addr to send to ms server
+	CurrLoc *Pos
 }
 
 const (
@@ -32,6 +34,7 @@ const (
 )
 
 // Game variables.
+var isPlaying bool        // Is the game in session.
 var nodeId string         // Name of client.
 var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
@@ -40,6 +43,10 @@ var myNode Node           // My node.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
+
+// Game timers in milliseconds.
+var intervalUpdateRate time.Duration
+var tickRate time.Duration
 
 var board [10][10]string
 var directions map[string]string
@@ -57,30 +64,20 @@ func main() {
 
 	nodeAddr, nodeRpcAddr, msServerAddr = os.Args[1], os.Args[2], os.Args[3]
 
-    httpServerTcpAddr, err := net.ResolveTCPAddr("tcp", os.Args[4])
-    checkErr(err)
-    httpServerAddr = httpServerTcpAddr.String()
+	httpServerTcpAddr, err := net.ResolveTCPAddr("tcp", os.Args[4])
+	checkErr(err)
+	httpServerAddr = httpServerTcpAddr.String()
 
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
 
-	// ============= FOR TESTING PURPOSES ============== //
-	// Add myself.
-	nodeId = "meeee"
-	myNode = Node{Id: nodeId, Ip: nodeAddr, currLoc: Pos{1, 1}}
+	startGame() // TODO Testing purposes only, should be called in rpc start game
 
-	// Add some enemies.
-	client2 := Node{Id: "foo2", Ip: "localhost:8768"}
-	client3 := Node{Id: "foo3", Ip: "localhost:8769"}
-
-	nodes = append(nodes, myNode, client2, client3)
-	// ================================================= //
-
-	waitGroup.Add(3) // Add internal process.
+	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
 	go httpServe()
-	go intervalUpdate() // Internal update mechanism.
-	waitGroup.Wait()    // Wait until processes are done.
+
+	waitGroup.Wait() // Wait until processes are done.
 }
 
 // Initialize variables.
@@ -107,24 +104,120 @@ func init() {
 		"p6": DIRECTION_LEFT,
 	}
 
-	playerMap = map[string]string{
-		"id1": "p1",
-		"id2": "p2",
-		"id3": "p3",
-		"id4": "p4",
-		"id5": "p5",
-		"id6": "p6",
+	nodes = make([]Node, 0)
+
+	tickRate = 500 * time.Millisecond
+	intervalUpdateRate = 500 * time.Millisecond
+}
+
+func startGame() {
+	// ============= FOR TESTING PURPOSES ============== //
+	// Add some enemies. TODO: CurrLoc for peers should be initialized elsewhere.
+	// Hardcoded list of clients
+	client1 := Node{Id: "foo1", Ip: ":8767", CurrLoc: &Pos{1, 1}}
+	client2 := Node{Id: "foo2", Ip: ":8768", CurrLoc: &Pos{8, 8}}
+	client3 := Node{Id: "foo3", Ip: ":8769", CurrLoc: &Pos{8, 1}}
+
+	nodes = append(nodes, client1, client2, client3)
+
+	// find myself
+	for _, node := range nodes {
+		if node.Ip == nodeAddr {
+			myNode = node
+			nodeId = node.Id
+		}
 	}
 
-	nodes = make([]Node, 0)
+	playerMap = map[string]string{
+		nodeId:     "p1",
+		client2.Id: "p2",
+		client3.Id: "p3",
+	}
+
+	// ================================================= //
+
+	isPlaying = true
+
+	go listenUDPPacket()
+	go intervalUpdate()
+	go tickGame()
+}
+
+// Each tick of the game.
+func tickGame() {
+	defer waitGroup.Done()
+
+	if isPlaying == false {
+		return
+	}
+
+	for {
+		for i, node := range nodes {
+			playerIndex := i + 1
+			direction := directions[playerMap[node.Id]]
+			x := node.CurrLoc.X
+			y := node.CurrLoc.Y
+			new_x := node.CurrLoc.X
+			new_y := node.CurrLoc.Y
+
+			// Path prediction
+			board[y][x] = "t" + strconv.Itoa(playerIndex) // Change position to be a trail.
+			switch direction {
+			case DIRECTION_UP:
+				new_y = y - 1
+			case DIRECTION_DOWN:
+				new_y = y + 1
+			case DIRECTION_LEFT:
+				new_x = x - 1
+			case DIRECTION_RIGHT:
+				new_x = x + 1
+			}
+
+			if nodeHasCollided(x, y, new_x, new_y) {
+				log.Println("NODE " + node.Id + " IS DEAD")
+				// We don't update the position to a new value
+				board[y][x] = "d" + strconv.Itoa(playerIndex) // Dead node
+			} else {
+				// Update player's new position.
+				board[new_y][new_x] = "p" + strconv.Itoa(playerIndex)
+				node.CurrLoc.X = new_x
+				node.CurrLoc.Y = new_y
+			}
+		}
+		renderGame()
+		time.Sleep(tickRate)
+	}
+}
+
+// Check if a node has collided into a trail, wall, or another node.
+func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
+	// Wall boundaries.
+	if newX < 0 || newY < 0 || newX > BOARD_SIZE || newY > BOARD_SIZE {
+		return true
+	}
+	// Collision with another player or trail.
+	if board[newY][newX] != "" {
+		return true
+	}
+	return false
+}
+
+// Renders the game.
+func renderGame() {
+	printBoard()
 }
 
 // Update peers with node's current location.
 func intervalUpdate() {
 	defer waitGroup.Done()
+
+	if isPlaying == false {
+		return
+	}
+
 	for {
-		currentLocationJSON, err := json.Marshal(myNode.currLoc)
-		log.Println("Data to send: " + fmt.Sprintln(myNode.currLoc))
+		currentLocationJSON, err := json.Marshal(myNode.CurrLoc)
+		log.Println("Data to send: " + fmt.Sprintln(myNode.CurrLoc))
 		checkErr(err)
 		for _, node := range nodes {
 			if node.Id != nodeId {
@@ -132,23 +225,50 @@ func intervalUpdate() {
 				sendUDPPacket(node.Ip, currentLocationJSON)
 			}
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(intervalUpdateRate)
 	}
 }
 
 // Send data to ip via UDP.
 func sendUDPPacket(ip string, data []byte) {
-	localAddr, err := net.ResolveUDPAddr("udp", nodeAddr)
-	checkErr(err)
-	ipAddr, err := net.ResolveUDPAddr("udp", ip)
-	checkErr(err)
-	udpConn, err := net.DialUDP("udp", localAddr, ipAddr)
-	checkErr(err)
+	// localAddr, err := net.ResolveUDPAddr("udp", nodeAddr)
+	// checkErr(err)
+	// ipAddr, err := net.ResolveUDPAddr("udp", ip)
+	// checkErr(err)
+	// udpConn, err := net.DialUDP("udp", localAddr, ipAddr)
+	// checkErr(err)
 
+	// TODO a random port is picked since
+	// we can't listen and read at the same time
+	udpConn, err := net.Dial("udp", ip)
+	checkErr(err)
 	defer udpConn.Close()
 
 	_, err = udpConn.Write(data)
 	checkErr(err)
+}
+
+func listenUDPPacket() {
+	localAddr, err := net.ResolveUDPAddr("udp", nodeAddr)
+	checkErr(err)
+	udpConn, err := net.ListenUDP("udp", localAddr)
+	checkErr(err)
+	defer udpConn.Close()
+
+	buf := make([]byte, 1024)
+
+	for {
+		n, addr, err := udpConn.ReadFromUDP(buf)
+		fmt.Println("Received ", string(buf[0:n]), " from ", addr)
+
+		if err != nil {
+			fmt.Println("Error: ", err)
+		}
+	}
+}
+
+func notifyPeersDirChanged() {
+	// listen to socket io for direction changed topic
 }
 
 func handleNodeFailure() {
@@ -168,5 +288,20 @@ func checkErr(err error) {
 	if err != nil {
 		fmt.Println("error:", err)
 		os.Exit(1)
+	}
+}
+
+// For debugging
+func printBoard() {
+	for r, _ := range board {
+		fmt.Print("[")
+		for _, item := range board[r] {
+			if item == "" {
+				fmt.Print("__" + " ")
+			} else {
+				fmt.Print(item + " ")
+			}
+		}
+		fmt.Print("]\n")
 	}
 }
