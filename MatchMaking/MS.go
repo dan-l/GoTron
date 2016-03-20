@@ -11,8 +11,9 @@ import (
 	"time"
 )
 
-const sessionDelay time.Duration = 5 * time.Second
+const sessionDelay time.Duration = 15 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
+const leastPlayers int = 2
 
 /////////// Debugging Helper
 
@@ -93,17 +94,31 @@ func (this *Context) startGame() {
 	this.NodeLock.Unlock()
 }
 
+// RPC join called by a client
 func (this *Context) Join(node *Node, reply *ValReply) error {
-
 	AddNode(this, node)
 
 	// Check if the room is full
 	if len(this.gameRoom) >= this.roomLimit {
 		this.startGame()
-
 	}
-
 	return nil
+}
+
+// Perform certain operation every sessionDelay
+func endSession(this *Context) {
+	for t := range this.gameTimer.C {
+
+		// at are at least 2 players in the room
+		if len(this.gameRoom) >= leastPlayers {
+			this.startGame()
+			log.Println("ES: at least 2 players at ", t)
+		} else {
+			this.gameTimer.Reset(sessionDelay)
+			log.Println("ES: not enough players to start. Clock reset")
+			fmt.Println("gameRoom:", this.gameRoom, " len is ", len(this.gameRoom))
+		}
+	}
 }
 
 /////////// Helper methods
@@ -120,17 +135,6 @@ func AddNode(this *Context, node *Node) {
 	this.NodeLock.Unlock()
 }
 
-func ListenTimer(this *Context) {
-	for t := range this.gameTimer.C {
-		log.Println(t)
-
-		// Notify the clients that this session has ended
-
-		// Reset Timer
-		this.gameTimer.Reset(sessionDelay)
-	}
-}
-
 func main() {
 	// go run MS.go :4421
 	if len(os.Args) != 2 {
@@ -141,12 +145,12 @@ func main() {
 	// setup the kv service
 	context := &Context{
 		roomID:    0,
-		roomLimit: 2,
+		roomLimit: 5,
 		gameRoom:  make([]Node, 0),
 		gameTimer: time.NewTimer(5 * time.Second),
 	}
 
-	go ListenTimer(context)
+	go endSession(context)
 
 	// get arguments
 	rpcAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
