@@ -114,9 +114,11 @@ func startGame() {
 	// ============= FOR TESTING PURPOSES ============== //
 	// Add some enemies. TODO: CurrLoc for peers should be initialized elsewhere.
 	// Hardcoded list of clients
-	client1 := Node{Id: "foo1", Ip: ":8767", CurrLoc: &Pos{1, 1}}
-	client2 := Node{Id: "foo2", Ip: ":8768", CurrLoc: &Pos{8, 8}}
-	client3 := Node{Id: "foo3", Ip: ":8769", CurrLoc: &Pos{8, 1}}
+	// NOTE: Do not use addresses that lack an IP/hostname such as ":8767".
+	//       It breaks running the program on Windows.
+	client1 := Node{Id: "foo1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
+	client2 := Node{Id: "foo2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
+	client3 := Node{Id: "foo3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
 
 	nodes = append(nodes, client1, client2, client3)
 
