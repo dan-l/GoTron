@@ -12,7 +12,7 @@ import (
 // TODO: The real board will use constants such as "p1" to track current player
 //       locations. We should handle that.
 var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE]string{
-	[BOARD_SIZE]string{"TEMP USER ID", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"p1", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
@@ -24,6 +24,7 @@ var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 }
 var playerPos Pos = Pos{0, 0}
+var userCodeToID map[string]string = make(map[string]string)
 
 func intMax(a int, b int) int {
 	if a > b {
@@ -63,6 +64,17 @@ func updateInternalState(direction string) [BOARD_SIZE][BOARD_SIZE]string {
 	return httpServerFakeBoard
 }
 
+type InitialConfig struct {
+	Players map[string]string
+}
+
+// Sets up the initial config using the given player ID from the JS layer.
+// Returns the corresponding config once done.
+func setupInitialConfig(playerID string) InitialConfig {
+	userCodeToID["p1"] = playerID
+	return InitialConfig{Players: userCodeToID}
+}
+
 func httpServe() {
 	defer waitGroup.Done()
 	server, err := socketio.NewServer(nil)
@@ -72,6 +84,15 @@ func httpServe() {
 	server.On("connection", func(so socketio.Socket) {
 		log.Println("on connection")
 		so.Join("chat")
+		so.On("playerInfo", func(playerInfo map[string]string) {
+			id, ok := playerInfo["id"]
+			if !ok {
+				// TODO Output error message somewhere
+				return
+			}
+
+			so.Emit("initialConfig", setupInitialConfig(id))
+		})
 		so.On("playerMove", func(playerMove map[string]string) {
 			_, ok := playerMove["id"]
 			if !ok {

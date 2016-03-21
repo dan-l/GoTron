@@ -24,6 +24,7 @@ let gPlayerRect = new fabric.Rect({
 
 // TODO: Get the ID from user input.=
 let gUserID = "TEMP USER ID";
+let gUserCodeToIDMap;
 
 function handleKeyPress(event) {
   switch (event.key) {
@@ -74,9 +75,13 @@ function objContainsProps(obj, expectedProps) {
 }
 
 // TODO: Document.
-function onGameStateUpdate(state) {
+function handleGameStateUpdate(state) {
   if (!(state instanceof Array)) {
     throw new Error("Passed game state that isn't an array");
+  }
+
+  if (!gUserCodeToIDMap) {
+    throw new Error("User code to ID map not init")
   }
 
   for (let y = 0; y < state.length; y ++) {
@@ -86,7 +91,12 @@ function onGameStateUpdate(state) {
     }
 
     for (let x = 0; x < row.length; x++) {
-      if (state[y][x] == gUserID) {
+      if (!(state[y][x] in gUserCodeToIDMap)) {
+        continue;
+      }
+
+      // TODO: Handle additional players.
+      if (state[y][x] == "p1") {
         gPlayerRect.setTop(y * gPlayerRect.getHeight());
         gPlayerRect.setLeft(x * gPlayerRect.getWidth());
       }
@@ -96,11 +106,36 @@ function onGameStateUpdate(state) {
   gCanvas.renderAll();
 }
 
+// TODO: Document.
+function handleInitialConfig(initialConfig) {
+  if (!objContainsProps(initialConfig, ["Players"])) {
+    throw new Error("Got invalid initial config");
+  }
+
+  // TODO: At bare minimum, |initialConfig.players| should be an object with p1
+  //       *and* p2 defined, since the minimum number of players is 2. We should
+  //       catch that.
+  if (!objContainsProps(initialConfig.Players, ["p1"])) {
+    throw new Error("Got invalid initial config players");
+  }
+
+  gUserCodeToIDMap = initialConfig.Players;
+}
+
+// TODO: Document.
+function sendPlayerInfo() {
+  gSocket.emit("playerInfo", {"id": gUserID});
+}
+
 function main() {
   gCanvas.add(gPlayerRect);
 
   // Register handlers.
-  gSocket.on("gameStateUpdate", onGameStateUpdate);
+  gSocket.on("initialConfig", handleInitialConfig);
+  gSocket.on("gameStateUpdate", handleGameStateUpdate);
+
+  sendPlayerInfo();
+
   window.onkeydown = handleKeyPress;
 }
 
