@@ -1,7 +1,7 @@
 "use strict";
 
-const PLAYER_RECT_WIDTH = 10;
-const PLAYER_RECT_HEIGHT = 10;
+const PLAYER_RECT_WIDTH = 16;
+const PLAYER_RECT_HEIGHT = 16;
 const Direction = {
   UP: "U",
   DOWN: "D",
@@ -11,16 +11,22 @@ const Direction = {
 
 // Maps player codes constants such as "p1" and "t1" to a colour.
 const PLAYER_CODE_TO_COLOUR = {
+  "d1": "red",
   "p1": "red",
   "t1": "red",
+  "d2": "green",
   "p2": "green",
   "t2": "green",
+  "d3": "blue",
   "p3": "blue",
   "t3": "blue",
+  "d4": "orange",
   "p4": "orange",
   "t4": "orange",
+  "d5": "brown",
   "p5": "brown",
   "t5": "brown",
+  "d6": "black",
   "p6": "black",
   "t6": "black",
 };
@@ -130,6 +136,19 @@ function handleGameStateUpdate(state) {
         canvasProps.opacity = 0.5;
       }
       gCanvas.add(new fabric.Rect(canvasProps));
+      // If the player is dead, we want to overlay a indicator on top.
+      if (playerCode.charAt(0) == "d") {
+        gCanvas.add(new fabric.Line([
+          canvasProps.left,
+          canvasProps.top,
+          canvasProps.left + canvasProps.width,
+          canvasProps.top + canvasProps.height,
+        ], {
+          fill: "white",
+          stroke: "white",
+          strikeWidth: 10,
+        }));
+      }
     }
   }
 }

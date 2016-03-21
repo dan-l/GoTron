@@ -18,9 +18,9 @@ var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"t6", "p6", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"t6", "d6", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"t5", "p5", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"t4", "p4", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"t4", "d4", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"t3", "p3", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"t2", "p2", "", "", "", "", "", "", "", ""},
 }
