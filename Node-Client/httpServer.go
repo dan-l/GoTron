@@ -80,6 +80,10 @@ type InitialConfig struct {
 // Returns the corresponding config once done.
 func setupInitialConfig(playerID string) InitialConfig {
 	userCodeToID["p1"] = playerID
+	// Note: We set p2's ID here to allow us to test error handling in the JS
+	//       layer. Since this impl is just for testing, it doesn't matter what
+	//       ID we use.
+	userCodeToID["p2"] = "foo"
 	return InitialConfig{Players: userCodeToID}
 }
 

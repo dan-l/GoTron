@@ -130,16 +130,20 @@ function handleGameStateUpdate(state) {
   }
 }
 
-// TODO: Document.
+/**
+ * Sets up variables etc with the given initial config.
+ *
+ * @param {Object} initialConfig
+ *        An InitialConfig object as defined in httpServer.go.
+ */
 function handleInitialConfig(initialConfig) {
   if (!objContainsProps(initialConfig, ["Players"])) {
     throw new Error("Got invalid initial config");
   }
 
-  // TODO: At bare minimum, |initialConfig.players| should be an object with p1
-  //       *and* p2 defined, since the minimum number of players is 2. We should
-  //       catch that.
-  if (!objContainsProps(initialConfig.Players, ["p1"])) {
+  // Since the minimum number of players is 2, we can only test that at least
+  // p1 and p2 are defined.
+  if (!objContainsProps(initialConfig.Players, ["p1", "p2"])) {
     throw new Error("Got invalid initial config players");
   }
 
