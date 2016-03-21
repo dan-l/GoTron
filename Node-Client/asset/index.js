@@ -9,6 +9,22 @@ const Direction = {
   RIGHT: "R",
 };
 
+// Maps player codes constants such as "p1" and "t1" to a colour.
+const PLAYER_CODE_TO_COLOUR = {
+  "p1": "red",
+  "t1": "red",
+  "p2": "green",
+  "t2": "green",
+  "p3": "blue",
+  "t3": "blue",
+  "p4": "orange",
+  "t4": "orange",
+  "p5": "brown",
+  "t5": "brown",
+  "p6": "black",
+  "t6": "black",
+};
+
 const gSocket = io();
 // We use a StaticCanvas since we don't want users to be able to be able to
 // perform interactions such as resizing objects.
@@ -88,8 +104,13 @@ function handleGameStateUpdate(state) {
     }
 
     for (let x = 0; x < row.length; x++) {
-      if (state[y][x].length != 2) {
+      let playerCode = state[y][x];
+      if (playerCode.length != 2) {
         continue;
+      }
+
+      if (!(playerCode in PLAYER_CODE_TO_COLOUR)) {
+        throw new Error("State contains unknown player code: " + playerCode);
       }
 
       // TODO: Handle additional players.
@@ -98,15 +119,11 @@ function handleGameStateUpdate(state) {
         top: y * PLAYER_RECT_HEIGHT,
         width: PLAYER_RECT_WIDTH,
         height: PLAYER_RECT_HEIGHT,
+        fill: PLAYER_CODE_TO_COLOUR[playerCode],
       };
-      switch (state[y][x]) {
-        case "p1":
-          canvasProps.fill = "red";
-          break;
-        case "t1":
-          canvasProps.fill = "red";
-          canvasProps.opacity = 0.5;
-          break;
+      // If this is a trail, lower the opacity to make it visually obvious.
+      if (playerCode.charAt(0) == "t") {
+        canvasProps.opacity = 0.5;
       }
       gCanvas.add(new fabric.Rect(canvasProps));
     }

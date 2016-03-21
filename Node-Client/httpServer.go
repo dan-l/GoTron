@@ -12,19 +12,17 @@ import (
 
 // A fake board for testing/bring up purposes.
 // TODO: Remove this once the necessary bring up is done.
-// TODO: The real board will use constants such as "p1" to track current player
-//       locations. We should handle that.
 var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE]string{
 	[BOARD_SIZE]string{"p1", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"t6", "p6", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"t5", "p5", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"t4", "p4", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"t3", "p3", "", "", "", "", "", "", "", ""},
+	[BOARD_SIZE]string{"t2", "p2", "", "", "", "", "", "", "", ""},
 }
 var playerPos Pos = Pos{0, 0}
 var userCodeToID map[string]string = make(map[string]string)
