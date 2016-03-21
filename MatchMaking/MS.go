@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-const sessionDelay time.Duration = 15 * time.Second
-const RpcStartGame string = "NodeService.StartGame"
-const leastPlayers int = 2
-
 /////////// Debugging Helper
 
 // Level for printing
@@ -108,7 +104,6 @@ func (this *Context) Join(node *Node, reply *ValReply) error {
 // Perform certain operation every sessionDelay
 func endSession(this *Context) {
 	for t := range this.gameTimer.C {
-
 		// at are at least 2 players in the room
 		if len(this.gameRoom) >= leastPlayers {
 			this.startGame()
@@ -135,6 +130,23 @@ func AddNode(this *Context, node *Node) {
 	this.NodeLock.Unlock()
 }
 
+func listenToClient(ctx *Context, rpcAddr string) {
+
+	rpc.Register(ctx)
+	listener, e := net.Listen("tcp", rpcAddr)
+	FatalError(e)
+
+	// start the rpc side
+	rpc.Accept(listener)
+	DebugPrint(1, "Exiting")
+}
+
+// Global variables
+var waitGroup sync.WaitGroup // Wait group
+const sessionDelay time.Duration = 15 * time.Second
+const RpcStartGame string = "NodeService.StartGame"
+const leastPlayers int = 2
+
 func main() {
 	// go run MS.go :4421
 	if len(os.Args) != 2 {
@@ -150,18 +162,16 @@ func main() {
 		gameTimer: time.NewTimer(5 * time.Second),
 	}
 
-	go endSession(context)
-
 	// get arguments
 	rpcAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
 	FatalError(e)
-
 	DebugPrint(1, "Starting MS server")
-	rpc.Register(context)
-	listener, e := net.Listen("tcp", rpcAddr.String())
-	FatalError(e)
 
-	// start the rpc side
-	rpc.Accept(listener)
-	DebugPrint(1, "Exiting")
+	waitGroup.Add(2)
+
+	go endSession(context)
+	go listenToClient(context, rpcAddr.String())
+
+	// Wait until processes are done.
+	waitGroup.Wait()
 }
