@@ -36,23 +36,21 @@ const gSocket = io();
 // perform interactions such as resizing objects.
 const gCanvas = new fabric.StaticCanvas("mainCanvas");
 
-// TODO: Get the ID from user input.=
-let gUserID = "TEMP USER ID";
-let gUserCodeToIDMap;
+let gPlayerID;
 
 function handleKeyPress(event) {
   switch (event.key) {
     case "w":
-      gSocket.emit("playerMove", {"id": gUserID, "direction": Direction.UP});
+      gSocket.emit("playerMove", {"direction": Direction.UP});
       break;
     case "a":
-      gSocket.emit("playerMove", {"id": gUserID, "direction": Direction.LEFT});
+      gSocket.emit("playerMove", {"direction": Direction.LEFT});
       break;
     case "s":
-      gSocket.emit("playerMove", {"id": gUserID, "direction": Direction.DOWN});
+      gSocket.emit("playerMove", {"direction": Direction.DOWN});
       break;
     case "d":
-      gSocket.emit("playerMove", {"id": gUserID, "direction": Direction.RIGHT});
+      gSocket.emit("playerMove", {"direction": Direction.RIGHT});
       break;
     default:
       return;
@@ -99,8 +97,8 @@ function handleGameStateUpdate(state) {
     throw new Error("Passed game state that isn't an array");
   }
 
-  if (!gUserCodeToIDMap) {
-    throw new Error("User code to ID map not init")
+  if (!gPlayerID) {
+    throw new Error("User ID not set")
   }
 
   // For now, we want to throw away the existing canvas and repaint everything
@@ -160,32 +158,17 @@ function handleGameStateUpdate(state) {
  *        An InitialConfig object as defined in httpServer.go.
  */
 function handleInitialConfig(initialConfig) {
-  if (!objContainsProps(initialConfig, ["Players"])) {
+  if (!objContainsProps(initialConfig, ["LocalID"])) {
     throw new Error("Got invalid initial config");
   }
 
-  // Since the minimum number of players is 2, we can only test that at least
-  // p1 and p2 are defined.
-  if (!objContainsProps(initialConfig.Players, ["p1", "p2"])) {
-    throw new Error("Got invalid initial config players");
-  }
-
-  gUserCodeToIDMap = initialConfig.Players;
-}
-
-/**
- * Sends information on the local player to the HTTP layer. 
- */
-function sendPlayerInfo() {
-  gSocket.emit("playerInfo", {"id": gUserID});
+  gPlayerID = initialConfig.LocalID;
 }
 
 function main() {
   // Register handlers.
   gSocket.on("initialConfig", handleInitialConfig);
   gSocket.on("gameStateUpdate", handleGameStateUpdate);
-
-  sendPlayerInfo();
 
   window.onkeydown = handleKeyPress;
 }
