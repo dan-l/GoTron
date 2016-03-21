@@ -18,10 +18,10 @@ type Pos struct {
 
 // Peers
 type Node struct {
-	Id      string
-	Ip      string // udp port this node is listening to
-	RpcAddr string // rpc addr to send to ms server
-	CurrLoc *Pos
+	Id        string
+	Ip        string // udp port this node is listening to
+	CurrLoc   *Pos
+	Direction string
 }
 
 const (
@@ -50,7 +50,6 @@ var tickRate time.Duration
 
 var board [10][10]string
 var directions map[string]string
-var playerMap map[string]string
 
 func main() {
 	if len(os.Args) != 5 {
@@ -116,9 +115,9 @@ func startGame() {
 	// Hardcoded list of clients
 	// NOTE: Do not use addresses that lack an IP/hostname such as ":8767".
 	//       It breaks running the program on Windows.
-	client1 := Node{Id: "foo1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
-	client2 := Node{Id: "foo2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
-	client3 := Node{Id: "foo3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
+	client1 := Node{Id: "p1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
+	client2 := Node{Id: "p2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
+	client3 := Node{Id: "p3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
 
 	nodes = append(nodes, client1, client2, client3)
 
@@ -130,19 +129,13 @@ func startGame() {
 		}
 	}
 
-	playerMap = map[string]string{
-		nodeId:     "p1",
-		client2.Id: "p2",
-		client3.Id: "p3",
-	}
-
 	// ================================================= //
 
 	isPlaying = true
 
 	go listenUDPPacket()
 	go intervalUpdate()
-	go tickGame()
+	// go tickGame()
 }
 
 // Each tick of the game.
@@ -156,7 +149,7 @@ func tickGame() {
 	for {
 		for i, node := range nodes {
 			playerIndex := i + 1
-			direction := directions[playerMap[node.Id]]
+			direction := directions[node.Id]
 			x := node.CurrLoc.X
 			y := node.CurrLoc.Y
 			new_x := node.CurrLoc.X
@@ -218,28 +211,25 @@ func intervalUpdate() {
 	}
 
 	for {
-		currentLocationJSON, err := json.Marshal(myNode.CurrLoc)
-		log.Println("Data to send: " + fmt.Sprintln(myNode.CurrLoc))
+		nodeJson, err := json.Marshal(myNode)
+		log.Println("Data to send: " + fmt.Sprintln(myNode))
 		checkErr(err)
-		for _, node := range nodes {
-			if node.Id != nodeId {
-				log.Println("Sending interval update to " + node.Id + " at ip " + node.Ip)
-				sendUDPPacket(node.Ip, currentLocationJSON)
-			}
-		}
+		sendPacketsToPeers(nodeJson)
 		time.Sleep(intervalUpdateRate)
+	}
+}
+
+func sendPacketsToPeers(data []byte) {
+	for _, node := range nodes {
+		if node.Id != nodeId {
+			log.Println("Sending interval update to " + node.Id + " at ip " + node.Ip)
+			sendUDPPacket(node.Ip, data)
+		}
 	}
 }
 
 // Send data to ip via UDP.
 func sendUDPPacket(ip string, data []byte) {
-	// localAddr, err := net.ResolveUDPAddr("udp", nodeAddr)
-	// checkErr(err)
-	// ipAddr, err := net.ResolveUDPAddr("udp", ip)
-	// checkErr(err)
-	// udpConn, err := net.DialUDP("udp", localAddr, ipAddr)
-	// checkErr(err)
-
 	// TODO a random port is picked since
 	// we can't listen and read at the same time
 	udpConn, err := net.Dial("udp", ip)
@@ -269,8 +259,36 @@ func listenUDPPacket() {
 	}
 }
 
-func notifyPeersDirChanged() {
-	// listen to socket io for direction changed topic
+func findCurrLoc() *Pos {
+	for i, _ := range board {
+		for j, p := range board[i] {
+			if p == nodeId {
+				return &Pos{i, j}
+			}
+		}
+	}
+	return nil
+}
+
+func notifyPeersDirChanged(direction string) {
+	log.Println("Check if dir changed")
+	// check if the direction change for node with the id
+	if directions[nodeId] != direction {
+		log.Println("Direction for ", nodeId, " has changed from ",
+			directions[nodeId], " to ", direction)
+		myNode.Direction = direction
+		currLoc := findCurrLoc()
+		if currLoc != nil {
+			myNode.CurrLoc = currLoc
+		} else {
+			log.Fatal("IM LOSTTTTTT")
+		}
+
+		nodeJson, err := json.Marshal(myNode)
+		log.Println("Data to send: " + fmt.Sprintln(myNode))
+		checkErr(err)
+		sendPacketsToPeers(nodeJson)
+	}
 }
 
 func handleNodeFailure() {

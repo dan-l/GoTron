@@ -121,6 +121,8 @@ func httpServe() {
 				return
 			}
 
+			notifyPeersDirChanged(direction)
+
 			state, err := updateInternalState(direction)
 			if err != nil {
 				// TODO Output error message somewhere
