@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -46,12 +47,12 @@ func CheckError(err error, n int) {
 
 // When clients first connect to the MS server
 type Node struct {
-	Id string // Napon
-	Ip string // ip addr of Napon
+	Id string // [p1 to p6]
+	Ip string // ip addr of a client
 }
 
 type GameArgs struct {
-	NodeList []Node // List of peer a node should talk to
+	NodeList []*Node // List of peer a node should talk to
 }
 
 // Reply from client
@@ -63,10 +64,20 @@ type ValReply struct {
 type Context struct {
 	NodeLock sync.RWMutex
 
-	gameRoom  []Node // the only one game room contains all existing players
-	roomID    int    // atomically incremented game room id
+	gameRoom  []*Node // the only one game room contains all existing players
+	roomID    int     // atomically incremented game room id
 	roomLimit int
 	gameTimer *time.Timer // timer until game start
+}
+
+// Assign id to each client
+func (this *Context) assignID() {
+	this.NodeLock.Lock()
+	for index, client := range this.gameRoom {
+		client.Id = "p" + strconv.Itoa(index)
+	}
+	this.NodeLock.Unlock()
+	fmt.Println("Finish assigningID:", this.gameRoom)
 }
 
 // Notify all cients in current session about other players in the same room
@@ -82,7 +93,7 @@ func (this *Context) startGame() {
 	}
 
 	// Clear the game room
-	this.gameRoom = make([]Node, 0)
+	this.gameRoom = make([]*Node, 0)
 
 	// Reset the timer
 	this.gameTimer.Reset(sessionDelay)
@@ -96,6 +107,7 @@ func (this *Context) Join(node *Node, reply *ValReply) error {
 
 	// Check if the room is full
 	if len(this.gameRoom) >= this.roomLimit {
+		this.assignID()
 		this.startGame()
 	}
 	return nil
@@ -104,8 +116,9 @@ func (this *Context) Join(node *Node, reply *ValReply) error {
 // Perform certain operation every sessionDelay
 func endSession(this *Context) {
 	for t := range this.gameTimer.C {
-		// at are at least 2 players in the room
+		// At are at least 2 players in the room
 		if len(this.gameRoom) >= leastPlayers {
+			this.assignID()
 			this.startGame()
 			log.Println("ES: at least 2 players at ", t)
 		} else {
@@ -120,11 +133,11 @@ func endSession(this *Context) {
 
 // this is called when a node joins, it handles adding the node to lists
 func AddNode(this *Context, node *Node) {
-	DebugPrint(1, "New Client "+node.Id)
+	fmt.Println("new node:", node)
 	this.NodeLock.Lock()
 
 	// Add this client to the gameRoom
-	this.gameRoom = append(this.gameRoom, *node)
+	this.gameRoom = append(this.gameRoom, node)
 
 	fmt.Println("gameRoom:", this.gameRoom, " len is ", len(this.gameRoom))
 	this.NodeLock.Unlock()
@@ -134,7 +147,6 @@ func AddNode(this *Context, node *Node) {
 func listenToClient(ctx *Context, rpcAddr string) {
 	waitGroup.Done()
 	for {
-
 		rpc.Register(ctx)
 		listener, e := net.Listen("tcp", rpcAddr)
 		FatalError(e)
@@ -146,7 +158,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 				break
 			}
 			defer connection.Close()
-			fmt.Printf("listentcp: %s\n", connection.LocalAddr().String())
+			// Handle one connection at a time
 			go rpc.ServeConn(connection)
 		}
 		time.Sleep(time.Millisecond * 100)
@@ -170,7 +182,7 @@ func main() {
 	context := &Context{
 		roomID:    0,
 		roomLimit: 5,
-		gameRoom:  make([]Node, 0),
+		gameRoom:  make([]*Node, 0),
 		gameTimer: time.NewTimer(5 * time.Second),
 	}
 
