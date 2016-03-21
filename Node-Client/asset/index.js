@@ -82,7 +82,12 @@ function objContainsProps(obj, expectedProps) {
   return true;
 }
 
-// TODO: Document.
+/**
+ * Renders to the canvas a representation of the given game state.
+ *
+ * @param {String[][]} state
+ *        A "board" object as defined in node.go.
+ */
 function handleGameStateUpdate(state) {
   if (!(state instanceof Array)) {
     throw new Error("Passed game state that isn't an array");
@@ -113,7 +118,6 @@ function handleGameStateUpdate(state) {
         throw new Error("State contains unknown player code: " + playerCode);
       }
 
-      // TODO: Handle additional players.
       let canvasProps = {
         left: x * PLAYER_RECT_WIDTH,
         top: y * PLAYER_RECT_HEIGHT,
@@ -150,7 +154,9 @@ function handleInitialConfig(initialConfig) {
   gUserCodeToIDMap = initialConfig.Players;
 }
 
-// TODO: Document.
+/**
+ * Sends information on the local player to the HTTP layer. 
+ */
 function sendPlayerInfo() {
   gSocket.emit("playerInfo", {"id": gUserID});
 }
