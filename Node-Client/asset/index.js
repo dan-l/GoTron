@@ -10,17 +10,9 @@ const Direction = {
 };
 
 const gSocket = io();
-const gCanvas = new fabric.Canvas("mainCanvas");
-
-// TODO: Remove this at some point. It's here just so we know when the HTTP
-//       and JS layers work.
-let gPlayerRect = new fabric.Rect({
-  left: 0,
-  top: 0,
-  fill: "red",
-  width: PLAYER_RECT_WIDTH,
-  height: PLAYER_RECT_HEIGHT,
-});
+// We use a StaticCanvas since we don't want users to be able to be able to
+// perform interactions such as resizing objects.
+const gCanvas = new fabric.StaticCanvas("mainCanvas");
 
 // TODO: Get the ID from user input.=
 let gUserID = "TEMP USER ID";
@@ -84,6 +76,11 @@ function handleGameStateUpdate(state) {
     throw new Error("User code to ID map not init")
   }
 
+  // For now, we want to throw away the existing canvas and repaint everything
+  // whenever we get an update. All of this is pretty inefficient, but probably
+  // serves the requirements of this project well enough.
+  gCanvas.dispose();
+
   for (let y = 0; y < state.length; y ++) {
     let row = state[y];
     if (!(row instanceof Array)) {
@@ -91,19 +88,29 @@ function handleGameStateUpdate(state) {
     }
 
     for (let x = 0; x < row.length; x++) {
-      if (!(state[y][x] in gUserCodeToIDMap)) {
+      if (state[y][x].length != 2) {
         continue;
       }
 
       // TODO: Handle additional players.
-      if (state[y][x] == "p1") {
-        gPlayerRect.setTop(y * gPlayerRect.getHeight());
-        gPlayerRect.setLeft(x * gPlayerRect.getWidth());
+      let canvasProps = {
+        left: x * PLAYER_RECT_WIDTH,
+        top: y * PLAYER_RECT_HEIGHT,
+        width: PLAYER_RECT_WIDTH,
+        height: PLAYER_RECT_HEIGHT,
+      };
+      switch (state[y][x]) {
+        case "p1":
+          canvasProps.fill = "red";
+          break;
+        case "t1":
+          canvasProps.fill = "red";
+          canvasProps.opacity = 0.5;
+          break;
       }
+      gCanvas.add(new fabric.Rect(canvasProps));
     }
   }
-
-  gCanvas.renderAll();
 }
 
 // TODO: Document.
@@ -128,8 +135,6 @@ function sendPlayerInfo() {
 }
 
 function main() {
-  gCanvas.add(gPlayerRect);
-
   // Register handlers.
   gSocket.on("initialConfig", handleInitialConfig);
   gSocket.on("gameStateUpdate", handleGameStateUpdate);
