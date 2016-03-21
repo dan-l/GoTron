@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const sessionDelay time.Duration = 15 * time.Second
+const sessionDelay time.Duration = 10 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const leastPlayers int = 2
 
