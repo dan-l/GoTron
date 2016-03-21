@@ -130,20 +130,32 @@ func AddNode(this *Context, node *Node) {
 	this.NodeLock.Unlock()
 }
 
+// Listen and serve request from client
 func listenToClient(ctx *Context, rpcAddr string) {
+	waitGroup.Done()
+	for {
 
-	rpc.Register(ctx)
-	listener, e := net.Listen("tcp", rpcAddr)
-	FatalError(e)
+		rpc.Register(ctx)
+		listener, e := net.Listen("tcp", rpcAddr)
+		FatalError(e)
+		fmt.Println("LISTENING")
 
-	// start the rpc side
-	rpc.Accept(listener)
-	DebugPrint(1, "Exiting")
+		for {
+			connection, e := listener.Accept()
+			if e != nil {
+				break
+			}
+			defer connection.Close()
+			fmt.Printf("listentcp: %s\n", connection.LocalAddr().String())
+			go rpc.ServeConn(connection)
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 15 * time.Second
+const sessionDelay time.Duration = 10 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const leastPlayers int = 2
 
