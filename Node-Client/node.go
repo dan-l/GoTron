@@ -38,8 +38,8 @@ var isPlaying bool        // Is the game in session.
 var nodeId string         // Name of client.
 var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
-var nodes []Node          // All nodes in the game.
-var myNode Node           // My node.
+var nodes []*Node         // All nodes in the game.
+var myNode *Node          // My node.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
@@ -50,6 +50,7 @@ var tickRate time.Duration
 
 var board [10][10]string
 var directions map[string]string
+var initialPosition map[string]*Pos
 
 func main() {
 	if len(os.Args) != 5 {
@@ -69,8 +70,6 @@ func main() {
 
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
-
-	startGame() // TODO Testing purposes only, should be called in rpc start game
 
 	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
@@ -103,7 +102,16 @@ func init() {
 		"p6": DIRECTION_LEFT,
 	}
 
-	nodes = make([]Node, 0)
+	initialPosition = map[string]*Pos{
+		"p1": &Pos{1, 1},
+		"p2": &Pos{8, 8},
+		"p3": &Pos{8, 1},
+		"p4": &Pos{1, 8},
+		"p5": &Pos{4, 1},
+		"p6": &Pos{5, 8},
+	}
+
+	nodes = make([]*Node, 0)
 
 	tickRate = 500 * time.Millisecond
 	intervalUpdateRate = 500 * time.Millisecond
@@ -129,14 +137,17 @@ func startGame() {
 	// Hardcoded list of clients
 	// NOTE: Do not use addresses that lack an IP/hostname such as ":8767".
 	//       It breaks running the program on Windows.
-	client1 := Node{Id: "p1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
-	client2 := Node{Id: "p2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
-	client3 := Node{Id: "p3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
+	//client1 := Node{Id: "p1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
+	//client2 := Node{Id: "p2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
+	//client3 := Node{Id: "p3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
+	//nodes = append(nodes, client1, client2, client3)
 
-	nodes = append(nodes, client1, client2, client3)
+	// The above is commented out because we are now hooked up with the Matchmaking server.
 
-	// find myself
+	// Init everyone's location and find myself.
 	for _, node := range nodes {
+		node.CurrLoc = initialPosition[node.Id]
+		node.Direction = directions[node.Id]
 		if node.Ip == nodeAddr {
 			myNode = node
 			nodeId = node.Id
@@ -149,7 +160,7 @@ func startGame() {
 
 	go listenUDPPacket()
 	go intervalUpdate()
-	// go tickGame()
+	go tickGame()
 }
 
 // Each tick of the game.
@@ -320,7 +331,7 @@ func leaderConflictResolution() {
 // Error checking. Exit program when error occurs.
 func checkErr(err error) {
 	if err != nil {
-		fmt.Println("error:", err)
+		log.Println("error:", err)
 		os.Exit(1)
 	}
 }
