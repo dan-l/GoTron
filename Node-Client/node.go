@@ -81,17 +81,17 @@ func main() {
 
 // Initialize variables.
 func init() {
-	board = [10][10]string{
-		[10]string{"", "", "", "", "", "", "", "", "", ""},
-		[10]string{"", "p1", "", "", "", "", "", "", "p3", ""},
-		[10]string{"", "", "", "", "", "", "", "", "", ""},
-		[10]string{"", "", "", "", "", "", "", "", "", ""},
-		[10]string{"", "p5", "", "", "", "", "", "", "", ""},
-		[10]string{"", "", "", "", "", "", "", "", "p6", ""},
-		[10]string{"", "", "", "", "", "", "", "", "", ""},
-		[10]string{"", "", "", "", "", "", "", "", "", ""},
-		[10]string{"", "p4", "", "", "", "", "", "", "p2", ""},
-		[10]string{"", "", "", "", "", "", "", "", "", ""},
+	board = [BOARD_SIZE][BOARD_SIZE]string{
+		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+		[BOARD_SIZE]string{"", "p1", "", "", "", "", "", "", "p3", ""},
+		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+		[BOARD_SIZE]string{"", "p5", "", "", "", "", "", "", "", ""},
+		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "p6", ""},
+		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
+		[BOARD_SIZE]string{"", "p4", "", "", "", "", "", "", "p2", ""},
+		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
 	}
 
 	directions = map[string]string{
@@ -107,6 +107,20 @@ func init() {
 
 	tickRate = 500 * time.Millisecond
 	intervalUpdateRate = 500 * time.Millisecond
+}
+
+func intMax(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func intMin(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func startGame() {
@@ -159,13 +173,13 @@ func tickGame() {
 			board[y][x] = "t" + strconv.Itoa(playerIndex) // Change position to be a trail.
 			switch direction {
 			case DIRECTION_UP:
-				new_y = y - 1
+				new_y = intMax(0, y-1)
 			case DIRECTION_DOWN:
-				new_y = y + 1
+				new_y = intMin(BOARD_SIZE-1, y+1)
 			case DIRECTION_LEFT:
-				new_x = x - 1
+				new_x = intMax(0, x-1)
 			case DIRECTION_RIGHT:
-				new_x = x + 1
+				new_x = intMin(BOARD_SIZE-1, x+1)
 			}
 
 			if nodeHasCollided(x, y, new_x, new_y) {
