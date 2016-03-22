@@ -140,19 +140,27 @@ func endSession(this *Context) {
 
 /////////// Helper methods
 
+// this is called when a node disconnects
+func deleteNode(ctx *Context, rpcip string) {
+	ctx.NodeLock.Lock()
+	DebugPrint(1, "Lost Node:"+rpcip)
+
+	ctx.NodeLock.Unlock()
+}
+
 // this is called when a node joins, it handles adding the node to lists
-func AddNode(this *Context, nodeJoin *NodeJoin) {
+func AddNode(ctx *Context, nodeJoin *NodeJoin) {
 	fmt.Println("new node:", nodeJoin)
-	this.NodeLock.Lock()
+	ctx.NodeLock.Lock()
 
 	// Add this client to the gameRoom
-	this.nodeList = append(this.nodeList, nodeJoin)
+	ctx.nodeList = append(ctx.nodeList, nodeJoin)
 
 	node := &Node{Ip: nodeJoin.Ip}
-	this.gameRoom = append(this.gameRoom, node)
+	ctx.gameRoom = append(ctx.gameRoom, node)
 
-	fmt.Println("gameRoom:", this.gameRoom, " len is ", len(this.gameRoom))
-	this.NodeLock.Unlock()
+	fmt.Println("gameRoom:", ctx.gameRoom, " len is ", len(ctx.gameRoom))
+	ctx.NodeLock.Unlock()
 }
 
 // Listen and serve request from client
