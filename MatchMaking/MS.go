@@ -82,7 +82,7 @@ type Context struct {
 func (this *Context) assignID() {
 	this.NodeLock.Lock()
 	for index, client := range this.gameRoom {
-		client.Id = "p" + strconv.Itoa(index)
+		client.Id = "p" + strconv.Itoa(index+1)
 	}
 	this.NodeLock.Unlock()
 	fmt.Println("Finish assigningID:", this.gameRoom)
