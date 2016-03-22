@@ -25,7 +25,7 @@ var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE
 	[BOARD_SIZE]string{"t2", "p2", "", "", "", "", "", "", "", ""},
 }
 var playerPos Pos = Pos{0, 0}
-var userCodeToID map[string]string = make(map[string]string)
+var playerID string
 
 func intMax(a int, b int) int {
 	if a > b {
@@ -73,18 +73,13 @@ func updateInternalState(direction string) ([BOARD_SIZE][BOARD_SIZE]string, erro
 }
 
 type InitialConfig struct {
-	Players map[string]string
+	LocalID string // The ID of the local node ("p1", "p2" etc).
 }
 
-// Sets up the initial config using the given player ID from the JS layer.
-// Returns the corresponding config once done.
-func setupInitialConfig(playerID string) InitialConfig {
-	userCodeToID["p1"] = playerID
-	// Note: We set p2's ID here to allow us to test error handling in the JS
-	//       layer. Since this impl is just for testing, it doesn't matter what
-	//       ID we use.
-	userCodeToID["p2"] = "foo"
-	return InitialConfig{Players: userCodeToID}
+// Sets up the initial config then returns it once done.
+func setupInitialConfig() InitialConfig {
+	playerID = "p1"
+	return InitialConfig{LocalID: playerID}
 }
 
 func httpServe() {
@@ -96,30 +91,14 @@ func httpServe() {
 	server.On("connection", func(so socketio.Socket) {
 		log.Println("on connection")
 		so.Join("chat")
-		so.On("playerInfo", func(playerInfo map[string]string) {
-			id, ok := playerInfo["id"]
-			if !ok {
-				// TODO Output error message somewhere
-				return
-			}
-
-			so.Emit("initialConfig", setupInitialConfig(id))
-			// After sending the config, we need to send an initial game state
-			// update so the JS layer renders everything.
-			so.Emit("gameStateUpdate", httpServerFakeBoard)
-		})
 		so.On("playerMove", func(playerMove map[string]string) {
-			_, ok := playerMove["id"]
-			if !ok {
-				// TODO Output error message somewhere
-				return
-			}
-
 			direction, ok := playerMove["direction"]
 			if !ok {
 				// TODO Output error message somewhere
 				return
 			}
+
+			notifyPeersDirChanged(direction)
 
 			state, err := updateInternalState(direction)
 			if err != nil {
@@ -132,6 +111,10 @@ func httpServe() {
 		so.On("disconnection", func() {
 			log.Println("on disconnect")
 		})
+		so.Emit("initialConfig", setupInitialConfig())
+		// After sending the config, we need to send an initial game state
+		// update so the JS layer renders everything.
+		so.Emit("gameStateUpdate", httpServerFakeBoard)
 	})
 	server.On("error", func(so socketio.Socket, err error) {
 		log.Println("error:", err)
