@@ -51,6 +51,7 @@ var tickRate time.Duration
 var board [BOARD_SIZE][BOARD_SIZE]string
 var directions map[string]string
 var initialPosition map[string]*Pos
+var lastCheckin map[string]time.Time
 
 func main() {
 	if len(os.Args) != 5 {
@@ -112,9 +113,10 @@ func init() {
 	}
 
 	nodes = make([]*Node, 0)
+	lastCheckin = make(map[string]time.Time)
 
 	tickRate = 500 * time.Millisecond
-	intervalUpdateRate = 500 * time.Millisecond
+	intervalUpdateRate = 500 * time.Millisecond // TODO we said it's 100 in proposal?
 }
 
 func intMax(a int, b int) int {
@@ -146,12 +148,18 @@ func startGame() {
 
 	// Init everyone's location and find myself.
 	for _, node := range nodes {
+		node.Direction = directions[node.Id]
+	}
+
+	// find myself
+	for _, node := range nodes {
 		node.CurrLoc = initialPosition[node.Id]
 		node.Direction = directions[node.Id]
 		if node.Ip == nodeAddr {
 			myNode = node
 			nodeId = node.Id
 		}
+		lastCheckin[node.Id] = time.Now()
 	}
 
 	// ================================================= //
@@ -161,12 +169,11 @@ func startGame() {
 	go listenUDPPacket()
 	go intervalUpdate()
 	go tickGame()
+	go handleNodeFailure()
 }
 
 // Each tick of the game.
 func tickGame() {
-	defer waitGroup.Done()
-
 	if isPlaying == false {
 		return
 	}
@@ -235,8 +242,6 @@ func renderGame() {
 
 // Update peers with node's current location.
 func intervalUpdate() {
-	defer waitGroup.Done()
-
 	if isPlaying == false {
 		return
 	}
@@ -282,7 +287,12 @@ func listenUDPPacket() {
 
 	for {
 		n, addr, err := udpConn.ReadFromUDP(buf)
-		fmt.Println("Received ", string(buf[0:n]), " from ", addr)
+		data := buf[0:n]
+		fmt.Println("Received ", string(data), " from ", addr)
+		var node Node
+		err = json.Unmarshal(data, &node)
+		checkErr(err)
+		lastCheckin[node.Id] = time.Now()
 
 		if err != nil {
 			fmt.Println("Error: ", err)
@@ -322,10 +332,39 @@ func notifyPeersDirChanged(direction string) {
 	}
 }
 
+func isLeader() bool {
+	return nodes[0].Id == nodeId
+}
+
+func hasExceededThreshold(nodeLastCheckin int64) bool {
+	// TODO gotta check the math
+	threshold := (nodeLastCheckin + (700 * int64(time.Millisecond/time.Nanosecond)))
+	now := time.Now().UnixNano()
+	log.Println("Threshold ", threshold, "Now ", now)
+	return threshold < now
+}
 func handleNodeFailure() {
+	if isPlaying == false {
+		return
+	}
 	// only for regular node
 	// check if the time it last checked in exceed CHECKIN_INTERVAL
-	// mark the alive property on node object
+	for {
+		if isLeader() {
+			log.Println("Im a leader, handling node failure")
+			for _, node := range nodes {
+				if node.Id != nodeId {
+					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
+						log.Println(node.Id, " HAS DIED")
+						// TODO tell rest of nodes this node has died
+					}
+				}
+			}
+		} else {
+			log.Println("Im not a leader, not gonna care about node failure")
+		}
+		time.Sleep(intervalUpdateRate)
+	}
 }
 
 func leaderConflictResolution() {
