@@ -27,20 +27,6 @@ var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE
 var playerPos Pos = Pos{0, 0}
 var playerID string
 
-func intMax(a int, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func intMin(a int, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // Updates the internal state of the board, then returns the new state.
 func updateInternalState(direction string) ([BOARD_SIZE][BOARD_SIZE]string, error) {
 	var playerCode string = httpServerFakeBoard[playerPos.Y][playerPos.X]
