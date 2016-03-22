@@ -6,14 +6,19 @@ import (
 	"net/rpc"
 )
 
-type NodeClient int
+type NodeService int
 
 type ValReply struct {
-	msg string
+	Val string
 }
 
 type GameArgs struct {
-	nodeList []Node
+	NodeList []*Node
+}
+
+type NodeJoin struct {
+	RpcIp string
+	Ip    string
 }
 
 var nodeRpcAddr string
@@ -21,36 +26,52 @@ var msServerAddr string // Matchmaking server IP.
 var msService *rpc.Client
 
 // This RPC function is triggered when a game is ready to begin.
-func (nc *NodeClient) StartGame(args *GameArgs, response *ValReply) error {
-	nodes = args.nodeList
-	log.Println("Starting game with nodes:")
-	// startGame() // in node.go, call when rpc is working
+func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
+	nodes = args.NodeList
+	log.Println("Starting game with nodes: " + printNodes())
+	msService.Close()
+	startGame() // in node.go, call when rpc is working
 	return nil
 }
 
+// Print node in the list
+func printNodes() string {
+	result := ""
+	for _, n := range nodes {
+		result += n.Ip + " "
+	}
+	return result
+}
+
 // This RPC function serves as a way for the Matchmaking service to send text to this node.
-func (nc *NodeClient) Message(args *GameArgs, response *ValReply) error {
-	log.Println("Received message:" + response.msg)
+func (nc *NodeService) Message(args *GameArgs, response *ValReply) error {
+	log.Println("Received message:" + response.Val)
 	return nil
 }
 
 func msRpcServce() {
 	defer waitGroup.Done()
-	nodeClient := new(NodeClient)
-	rpc.Register(nodeClient)
-	nodeListener, e := net.Listen("tcp", nodeRpcAddr)
-	if e != nil {
-		log.Fatal("listen error:", e)
-	}
-	log.Println("Listening for ms server at ", nodeRpcAddr)
-	conn, _ := nodeListener.Accept()
-	rpc.ServeConn(conn)
-}
 
-func connectMs() {
-	msService, err := rpc.Dial("tcp", msServerAddr)
-	if err != nil {
-		log.Fatal("connect error:", err)
-	}
-	log.Println("Connected to matchmaking server", msService)
+	localAddr, e := net.ResolveTCPAddr("tcp", nodeRpcAddr)
+	checkErr(e)
+
+	remoteAddr, e := net.ResolveTCPAddr("tcp", msServerAddr)
+	checkErr(e)
+
+	go func() {
+		nodeService := new(NodeService)
+		rpc.Register(nodeService)
+		nodeListener, e := net.Listen("tcp", localAddr.String())
+		checkErr(e)
+
+		log.Println("Listening for ms server at ", localAddr.String())
+		conn, _ := nodeListener.Accept()
+		rpc.ServeConn(conn)
+	}()
+
+	msService, e = rpc.Dial("tcp", remoteAddr.String())
+	checkErr(e)
+
+	var reply *ValReply = &ValReply{Val: ""}
+	_ = msService.Call("Context.Join", &NodeJoin{RpcIp: nodeRpcAddr, Ip: nodeAddr}, reply)
 }
