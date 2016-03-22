@@ -49,9 +49,14 @@ type Node struct {
 	Ip string // ip addr of Napon
 }
 
+type NodeJoin struct {
+	RpcIp string // The one MS has to dial at start Game
+	Ip    string // ip to send to each player
+}
+
 func main() {
-	// go run client.go clientIP msIPport
-	// go run client.go :4421 :4431 Hi
+	// go run client.go rpcIP msIPport nodeIP
+	// go run client.go :4101 :4421 :4441
 	if len(os.Args) != 4 {
 		fmt.Println("Not enough arguments")
 		os.Exit(-1)
@@ -83,7 +88,7 @@ func main() {
 	defer client.Close()
 
 	var reply *ValReply = &ValReply{Val: ""}
-	e = client.Call(RpcJoin, &Node{Id: os.Args[3], Ip: localAddr.String()}, reply)
+	e = client.Call(RpcJoin, &NodeJoin{RpcIp: localAddr.String(), Ip: os.Args[3]}, reply)
 	CheckError(e, 6)
 
 	fmt.Println("Reply: ", reply.Val)

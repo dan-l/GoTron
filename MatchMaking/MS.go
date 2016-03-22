@@ -28,7 +28,7 @@ func DebugPrint(level int, str string) {
 	}
 }
 
-// check if a fatal error has ocurred
+// The program should exit if this gives error
 func FatalError(e error) {
 	if e != nil {
 		fmt.Println(e)
@@ -36,6 +36,7 @@ func FatalError(e error) {
 	}
 }
 
+// Help debug the location
 func CheckError(err error, n int) {
 	if err != nil {
 		fmt.Println(n, ": ", err)
@@ -48,7 +49,12 @@ func CheckError(err error, n int) {
 // When clients first connect to the MS server
 type Node struct {
 	Id string // [p1 to p6]
-	Ip string // ip addr of a client
+	Ip string // ip to send to each player
+}
+
+type NodeJoin struct {
+	RpcIp string // The one MS has to dial at start Game
+	Ip    string // ip to send to each player
 }
 
 type GameArgs struct {
@@ -64,10 +70,12 @@ type ValReply struct {
 type Context struct {
 	NodeLock sync.RWMutex
 
+	nodeList  []*NodeJoin
 	gameRoom  []*Node // the only one game room contains all existing players
 	roomID    int     // atomically incremented game room id
 	roomLimit int
 	gameTimer *time.Timer // timer until game start
+
 }
 
 // Assign id to each client
@@ -83,8 +91,8 @@ func (this *Context) assignID() {
 // Notify all cients in current session about other players in the same room
 func (this *Context) startGame() {
 	this.NodeLock.Lock()
-	for _, client := range this.gameRoom {
-		c, e := rpc.Dial("tcp", client.Ip)
+	for _, client := range this.nodeList {
+		c, e := rpc.Dial("tcp", client.RpcIp)
 		CheckError(e, 1)
 		var reply *ValReply = &ValReply{Val: ""}
 		e = c.Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
@@ -92,7 +100,7 @@ func (this *Context) startGame() {
 		c.Close()
 	}
 
-	// Clear the game room
+	// Clear the game room &
 	this.gameRoom = make([]*Node, 0)
 
 	// Reset the timer
@@ -102,7 +110,7 @@ func (this *Context) startGame() {
 }
 
 // RPC join called by a client
-func (this *Context) Join(node *Node, reply *ValReply) error {
+func (this *Context) Join(node *NodeJoin, reply *ValReply) error {
 	AddNode(this, node)
 
 	// Check if the room is full
@@ -110,6 +118,7 @@ func (this *Context) Join(node *Node, reply *ValReply) error {
 		this.assignID()
 		this.startGame()
 	}
+
 	return nil
 }
 
@@ -132,11 +141,14 @@ func endSession(this *Context) {
 /////////// Helper methods
 
 // this is called when a node joins, it handles adding the node to lists
-func AddNode(this *Context, node *Node) {
-	fmt.Println("new node:", node)
+func AddNode(this *Context, nodeJoin *NodeJoin) {
+	fmt.Println("new node:", nodeJoin)
 	this.NodeLock.Lock()
 
 	// Add this client to the gameRoom
+	this.nodeList = append(this.nodeList, nodeJoin)
+
+	node := &Node{Ip: nodeJoin.Ip}
 	this.gameRoom = append(this.gameRoom, node)
 
 	fmt.Println("gameRoom:", this.gameRoom, " len is ", len(this.gameRoom))
@@ -154,10 +166,9 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 		for {
 			connection, e := listener.Accept()
-			if e != nil {
-				break
-			}
+			FatalError(e)
 			defer connection.Close()
+
 			// Handle one connection at a time
 			go rpc.ServeConn(connection)
 		}
@@ -180,6 +191,7 @@ func main() {
 
 	// setup the kv service
 	context := &Context{
+		nodeList:  make([]*NodeJoin, 0),
 		roomID:    0,
 		roomLimit: 5,
 		gameRoom:  make([]*Node, 0),
