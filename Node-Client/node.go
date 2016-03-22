@@ -174,7 +174,7 @@ func tickGame() {
 	for {
 		for i, node := range nodes {
 			playerIndex := i + 1
-			direction := directions[node.Id]
+			direction := node.Direction
 			x := node.CurrLoc.X
 			y := node.CurrLoc.Y
 			new_x := node.CurrLoc.X
