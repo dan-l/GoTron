@@ -68,6 +68,11 @@ func setupInitialConfig() InitialConfig {
 	return InitialConfig{LocalID: playerID}
 }
 
+// TODO: This is a disgusting, terrible hack to allow the Node layer to
+//       broadcast state updates. We should replace this with something that's
+//       actually reasonable.
+var gSO socketio.Socket
+
 func httpServe() {
 	defer waitGroup.Done()
 	server, err := socketio.NewServer(nil)
@@ -75,6 +80,7 @@ func httpServe() {
 		log.Fatal(err)
 	}
 	server.On("connection", func(so socketio.Socket) {
+		gSO = so
 		log.Println("on connection")
 		so.Join("chat")
 		so.On("playerMove", func(playerMove map[string]string) {
@@ -85,14 +91,6 @@ func httpServe() {
 			}
 
 			notifyPeersDirChanged(direction)
-
-			state, err := updateInternalState(direction)
-			if err != nil {
-				// TODO Output error message somewhere
-				return
-			}
-
-			so.Emit("gameStateUpdate", state)
 		})
 		so.On("disconnection", func() {
 			log.Println("on disconnect")
@@ -100,7 +98,7 @@ func httpServe() {
 		so.Emit("initialConfig", setupInitialConfig())
 		// After sending the config, we need to send an initial game state
 		// update so the JS layer renders everything.
-		so.Emit("gameStateUpdate", httpServerFakeBoard)
+		so.Emit("gameStateUpdate", board)
 	})
 	server.On("error", func(so socketio.Socket, err error) {
 		log.Println("error:", err)

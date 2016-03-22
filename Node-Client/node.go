@@ -48,7 +48,7 @@ var waitGroup sync.WaitGroup // For internal processes.
 var intervalUpdateRate time.Duration
 var tickRate time.Duration
 
-var board [10][10]string
+var board [BOARD_SIZE][BOARD_SIZE]string
 var directions map[string]string
 var initialPosition map[string]*Pos
 
@@ -225,6 +225,12 @@ func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
 // Renders the game.
 func renderGame() {
 	printBoard()
+	// TODO: This is a disgusting, terrible hack to allow the Node layer to
+	//       broadcast state updates. We should replace this with something
+	//       that's actually reasonable.
+	if gSO != nil {
+		gSO.Emit("gameStateUpdate", board)
+	}
 }
 
 // Update peers with node's current location.
