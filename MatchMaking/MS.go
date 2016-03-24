@@ -40,18 +40,18 @@ func FatalError(e error) {
 func CheckError(err error, n int) {
 	if err != nil {
 		fmt.Println(n, ": ", err)
-		os.Exit(n)
 	}
 }
 
 /////////// RPC connection
 
-// When clients first connect to the MS server
+// Object to be sent back to the client
 type Node struct {
 	Id string // [p1 to p6]
 	Ip string // ip to send to each player
 }
 
+// Object received from the clients at the start
 type NodeJoin struct {
 	RpcIp string // The one MS has to dial at start Game
 	Ip    string // ip to send to each player
@@ -118,12 +118,39 @@ func (this *Context) makeGameRoom() {
 	this.NodeLock.Unlock()
 }
 
+// Ping the client to check if the connection is still good
+func (this *Context) checkConn() {
+	this.NodeLock.Lock()
+	for ClientIp, _ := range this.nodeList {
+		c, e := rpc.Dial("tcp", ClientIp)
+		if e != nil {
+			fmt.Println("Client:", ClientIp, " disconnect")
+			deleteNode(this, ClientIp)
+			continue
+		}
+
+		var reply *ValReply = &ValReply{Val: ""}
+		e = c.Call(RpcMessage, &GameArgs{NodeList: this.gameRoom}, reply)
+		if e != nil {
+			fmt.Println("Client:", ClientIp, " disconnect")
+			deleteNode(this, ClientIp)
+			continue
+		}
+		c.Close()
+	}
+
+	fmt.Print("Updated NodeList:", this.nodeList)
+
+	this.NodeLock.Unlock()
+}
+
 // RPC join called by a client
 func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	AddNode(this, nodeJoin)
 
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
+		this.checkConn()
 		this.makeGameRoom()
 		this.assignID()
 		this.startGame()
@@ -137,6 +164,7 @@ func endSession(this *Context) {
 	for t := range this.gameTimer.C {
 		// At are at least 2 players in the room
 		if len(this.nodeList) >= leastPlayers {
+			//this.checkConn()
 			this.makeGameRoom()
 			this.assignID()
 			this.startGame()
@@ -195,8 +223,9 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 10 * time.Second
+const sessionDelay time.Duration = 8 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
+const RpcMessage string = "NodeService.Message"
 const leastPlayers int = 2
 
 func main() {
