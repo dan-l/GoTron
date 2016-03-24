@@ -24,6 +24,13 @@ type Node struct {
 	Direction string
 }
 
+// Message to be passed among nodes.
+type Message struct {
+	IsLeader  bool     // is this from the leader.
+	DeadNodes []string // id of dead nodes.
+	Node      Node     // interval update struct.
+}
+
 const (
 	BOARD_SIZE       int    = 10
 	CHECKIN_INTERVAL int    = 200
@@ -40,6 +47,9 @@ var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
 var nodes []*Node         // All nodes in the game.
 var myNode *Node          // My node.
+
+// #LEADER specific.
+var deadNodes []string // id of dead nodes found.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
@@ -114,7 +124,7 @@ func init() {
 
 	nodes = make([]*Node, 0)
 	lastCheckin = make(map[string]time.Time)
-
+	deadNodes = make([]string, 0)
 	tickRate = 500 * time.Millisecond
 	intervalUpdateRate = 500 * time.Millisecond // TODO we said it's 100 in proposal?
 }
@@ -169,6 +179,7 @@ func startGame() {
 	go listenUDPPacket()
 	go intervalUpdate()
 	go tickGame()
+
 	go handleNodeFailure()
 }
 
@@ -247,8 +258,15 @@ func intervalUpdate() {
 	}
 
 	for {
-		nodeJson, err := json.Marshal(myNode)
-		log.Println("Data to send: " + fmt.Sprintln(myNode))
+		var message *Message
+		if isLeader() {
+			message = &Message{IsLeader: true, DeadNodes: deadNodes, Node: *myNode}
+		} else {
+			message = &Message{Node: *myNode}
+		}
+
+		nodeJson, err := json.Marshal(message)
+		//log.Println("Data to send: " + fmt.Sprintln(message))
 		checkErr(err)
 		sendPacketsToPeers(nodeJson)
 		time.Sleep(intervalUpdateRate)
@@ -258,7 +276,7 @@ func intervalUpdate() {
 func sendPacketsToPeers(data []byte) {
 	for _, node := range nodes {
 		if node.Id != nodeId {
-			log.Println("Sending interval update to " + node.Id + " at ip " + node.Ip)
+			//log.Println("Sending interval update to " + node.Id + " at ip " + node.Ip)
 			sendUDPPacket(node.Ip, data)
 		}
 	}
@@ -289,10 +307,20 @@ func listenUDPPacket() {
 		n, addr, err := udpConn.ReadFromUDP(buf)
 		data := buf[0:n]
 		fmt.Println("Received ", string(data), " from ", addr)
+		var message Message
 		var node Node
-		err = json.Unmarshal(data, &node)
+		err = json.Unmarshal(data, &message)
+		node = message.Node
 		checkErr(err)
+
 		lastCheckin[node.Id] = time.Now()
+
+		if message.IsLeader {
+			log.Println("deadNodes are: ", message.DeadNodes)
+			for _, n := range message.DeadNodes {
+				removeNodeFromList(n)
+			}
+		}
 
 		if err != nil {
 			fmt.Println("Error: ", err)
@@ -344,32 +372,60 @@ func isLeader() bool {
 
 func hasExceededThreshold(nodeLastCheckin int64) bool {
 	// TODO gotta check the math
-	threshold := (nodeLastCheckin + (700 * int64(time.Millisecond/time.Nanosecond)))
+	threshold := nodeLastCheckin + (700 * int64(time.Millisecond/time.Nanosecond))
 	now := time.Now().UnixNano()
-	log.Println("Threshold ", threshold, "Now ", now)
+	//log.Println("Threshold ", threshold, "Now ", now)
 	return threshold < now
 }
+
 func handleNodeFailure() {
 	if isPlaying == false {
 		return
 	}
+
 	// only for regular node
 	// check if the time it last checked in exceed CHECKIN_INTERVAL
 	for {
 		if isLeader() {
-			log.Println("Im a leader, handling node failure")
+			log.Println("Im a leader.")
 			for _, node := range nodes {
 				if node.Id != nodeId {
 					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
 						log.Println(node.Id, " HAS DIED")
 						// TODO tell rest of nodes this node has died
+						// --> leader should periodically send out active nodes in the system
+						// --> so here we just have to remove it from the nodes list.
+						deadNodes = append(deadNodes, node.Id)
+						log.Println(len(deadNodes))
+						removeNodeFromList(node.Id)
 					}
 				}
 			}
 		} else {
-			log.Println("Im not a leader, not gonna care about node failure")
+			log.Println("Im a node.")
+			// Continually check if leader is alive.
+			leaderId := nodes[0].Id
+			if hasExceededThreshold(lastCheckin[leaderId].UnixNano()) {
+				log.Println("LEADER ", leaderId, " HAS DIED.")
+				removeNodeFromList(leaderId)
+				// TODO: remove leader? or ask other peers first?
+			}
 		}
 		time.Sleep(intervalUpdateRate)
+	}
+}
+
+// LEADER: removes a dead node from the node list.
+// TODO: Have to confirm if this works.
+func removeNodeFromList(id string) {
+	i := 0
+	for i < len(nodes) {
+		currentNode := nodes[i]
+		if currentNode.Id == id {
+			nodes = append(nodes[:i], nodes[i+1:]...)
+		} else {
+			i++
+		}
 	}
 }
 
