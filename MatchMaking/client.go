@@ -30,7 +30,7 @@ func (kvs *NodeService) StartGame(args *GameArgs, reply *ValReply) error {
 }
 
 // This RPC function serves as a way for the Matchmaking service to send text to this node.
-func (kvs *NodeService) Message(args *GameArgs, response *ValReply) error {
+func (nc *NodeService) Message(args *GameArgs, response *ValReply) error {
 	log.Println("Received message:" + response.Val)
 	return nil
 }
@@ -41,7 +41,7 @@ type ValReply struct {
 }
 
 type GameArgs struct {
-	NodeList []Node
+	NodeList []*Node
 }
 
 type Node struct {

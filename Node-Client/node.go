@@ -38,8 +38,8 @@ var isPlaying bool        // Is the game in session.
 var nodeId string         // Name of client.
 var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
-var nodes []Node          // All nodes in the game.
-var myNode Node           // My node.
+var nodes []*Node         // All nodes in the game.
+var myNode *Node          // My node.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
@@ -48,8 +48,10 @@ var waitGroup sync.WaitGroup // For internal processes.
 var intervalUpdateRate time.Duration
 var tickRate time.Duration
 
-var board [10][10]string
+var board [BOARD_SIZE][BOARD_SIZE]string
 var directions map[string]string
+var initialPosition map[string]*Pos
+var lastCheckin map[string]time.Time
 
 func main() {
 	if len(os.Args) != 5 {
@@ -69,8 +71,6 @@ func main() {
 
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
-
-	startGame() // TODO Testing purposes only, should be called in rpc start game
 
 	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
@@ -103,10 +103,20 @@ func init() {
 		"p6": DIRECTION_LEFT,
 	}
 
-	nodes = make([]Node, 0)
+	initialPosition = map[string]*Pos{
+		"p1": &Pos{1, 1},
+		"p2": &Pos{8, 8},
+		"p3": &Pos{8, 1},
+		"p4": &Pos{1, 8},
+		"p5": &Pos{4, 1},
+		"p6": &Pos{5, 8},
+	}
+
+	nodes = make([]*Node, 0)
+	lastCheckin = make(map[string]time.Time)
 
 	tickRate = 500 * time.Millisecond
-	intervalUpdateRate = 500 * time.Millisecond
+	intervalUpdateRate = 500 * time.Millisecond // TODO we said it's 100 in proposal?
 }
 
 func intMax(a int, b int) int {
@@ -129,18 +139,27 @@ func startGame() {
 	// Hardcoded list of clients
 	// NOTE: Do not use addresses that lack an IP/hostname such as ":8767".
 	//       It breaks running the program on Windows.
-	client1 := Node{Id: "p1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
-	client2 := Node{Id: "p2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
-	client3 := Node{Id: "p3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
+	//client1 := Node{Id: "p1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
+	//client2 := Node{Id: "p2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
+	//client3 := Node{Id: "p3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
+	//nodes = append(nodes, client1, client2, client3)
 
-	nodes = append(nodes, client1, client2, client3)
+	// The above is commented out because we are now hooked up with the Matchmaking server.
+
+	// Init everyone's location and find myself.
+	for _, node := range nodes {
+		node.Direction = directions[node.Id]
+	}
 
 	// find myself
 	for _, node := range nodes {
+		node.CurrLoc = initialPosition[node.Id]
+		node.Direction = directions[node.Id]
 		if node.Ip == nodeAddr {
 			myNode = node
 			nodeId = node.Id
 		}
+		lastCheckin[node.Id] = time.Now()
 	}
 
 	// ================================================= //
@@ -149,13 +168,12 @@ func startGame() {
 
 	go listenUDPPacket()
 	go intervalUpdate()
-	// go tickGame()
+	go tickGame()
+	go handleNodeFailure()
 }
 
 // Each tick of the game.
 func tickGame() {
-	defer waitGroup.Done()
-
 	if isPlaying == false {
 		return
 	}
@@ -163,7 +181,7 @@ func tickGame() {
 	for {
 		for i, node := range nodes {
 			playerIndex := i + 1
-			direction := directions[node.Id]
+			direction := node.Direction
 			x := node.CurrLoc.X
 			y := node.CurrLoc.Y
 			new_x := node.CurrLoc.X
@@ -214,12 +232,16 @@ func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
 // Renders the game.
 func renderGame() {
 	printBoard()
+	// TODO: This is a disgusting, terrible hack to allow the Node layer to
+	//       broadcast state updates. We should replace this with something
+	//       that's actually reasonable.
+	if gSO != nil {
+		gSO.Emit("gameStateUpdate", board)
+	}
 }
 
 // Update peers with node's current location.
 func intervalUpdate() {
-	defer waitGroup.Done()
-
 	if isPlaying == false {
 		return
 	}
@@ -265,7 +287,12 @@ func listenUDPPacket() {
 
 	for {
 		n, addr, err := udpConn.ReadFromUDP(buf)
-		fmt.Println("Received ", string(buf[0:n]), " from ", addr)
+		data := buf[0:n]
+		fmt.Println("Received ", string(data), " from ", addr)
+		var node Node
+		err = json.Unmarshal(data, &node)
+		checkErr(err)
+		lastCheckin[node.Id] = time.Now()
 
 		if err != nil {
 			fmt.Println("Error: ", err)
@@ -305,10 +332,39 @@ func notifyPeersDirChanged(direction string) {
 	}
 }
 
+func isLeader() bool {
+	return nodes[0].Id == nodeId
+}
+
+func hasExceededThreshold(nodeLastCheckin int64) bool {
+	// TODO gotta check the math
+	threshold := (nodeLastCheckin + (700 * int64(time.Millisecond/time.Nanosecond)))
+	now := time.Now().UnixNano()
+	log.Println("Threshold ", threshold, "Now ", now)
+	return threshold < now
+}
 func handleNodeFailure() {
+	if isPlaying == false {
+		return
+	}
 	// only for regular node
 	// check if the time it last checked in exceed CHECKIN_INTERVAL
-	// mark the alive property on node object
+	for {
+		if isLeader() {
+			log.Println("Im a leader, handling node failure")
+			for _, node := range nodes {
+				if node.Id != nodeId {
+					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
+						log.Println(node.Id, " HAS DIED")
+						// TODO tell rest of nodes this node has died
+					}
+				}
+			}
+		} else {
+			log.Println("Im not a leader, not gonna care about node failure")
+		}
+		time.Sleep(intervalUpdateRate)
+	}
 }
 
 func leaderConflictResolution() {
@@ -320,7 +376,7 @@ func leaderConflictResolution() {
 // Error checking. Exit program when error occurs.
 func checkErr(err error) {
 	if err != nil {
-		fmt.Println("error:", err)
+		log.Println("error:", err)
 		os.Exit(1)
 	}
 }
