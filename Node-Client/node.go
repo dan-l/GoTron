@@ -313,10 +313,16 @@ func findCurrLoc() *Pos {
 
 func notifyPeersDirChanged(direction string) {
 	log.Println("Check if dir changed")
+	prevDirection, ok := directions[nodeId]
+	if !ok {
+		log.Fatal("Unable to get prev direction in notifyPeersDirChanged()")
+		return
+	}
+
 	// check if the direction change for node with the id
-	if directions[nodeId] != direction {
+	if prevDirection != direction {
 		log.Println("Direction for ", nodeId, " has changed from ",
-			directions[nodeId], " to ", direction)
+			prevDirection, " to ", direction)
 		myNode.Direction = direction
 		currLoc := findCurrLoc()
 		if currLoc != nil {
