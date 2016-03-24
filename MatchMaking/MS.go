@@ -137,14 +137,16 @@ func endSession(this *Context) {
 	for t := range this.gameTimer.C {
 		// At are at least 2 players in the room
 		if len(this.nodeList) >= leastPlayers {
+			this.NodeLock.Lock()
 			this.makeGameRoom()
 			this.assignID()
 			this.startGame()
 			log.Println("ES: at least 2 players at ", t)
+			this.NodeLock.Unlock()
 		} else {
 			this.gameTimer.Reset(sessionDelay)
 			log.Println("ES: not enough players to start. Clock reset")
-			fmt.Println("gameRoom:", this.gameRoom, " len is ", len(this.gameRoom))
+			fmt.Println("NodeList:", this.nodeList, " len is ", len(this.nodeList))
 		}
 	}
 }
@@ -170,11 +172,12 @@ func AddNode(ctx *Context, nodeJoin *NodeJoin) {
 
 	fmt.Println("NodeList:", ctx.nodeList, " len is ", len(ctx.nodeList))
 	ctx.NodeLock.Unlock()
+	fmt.Println("done AD")
 }
 
 // Listen and serve request from client
 func listenToClient(ctx *Context, rpcAddr string) {
-	waitGroup.Done()
+
 	for {
 		rpc.Register(ctx)
 		listener, e := net.Listen("tcp", rpcAddr)
@@ -195,7 +198,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 10 * time.Second
+const sessionDelay time.Duration = 8 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const leastPlayers int = 2
 
