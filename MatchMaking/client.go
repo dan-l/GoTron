@@ -41,7 +41,7 @@ type ValReply struct {
 }
 
 type GameArgs struct {
-	NodeList []Node
+	NodeList []*Node
 }
 
 type Node struct {
