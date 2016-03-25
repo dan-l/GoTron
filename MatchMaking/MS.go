@@ -123,21 +123,20 @@ func (this *Context) makeGameRoom() {
 
 // Ping clients to check if the connection is still good
 func (this *Context) checkConn() {
-	this.NodeLock.Lock()
+	//this.NodeLock.Lock()
 	for ClientIp, _ := range this.nodeList {
 		c, e := rpc.Dial("tcp", ClientIp)
 		if e != nil {
+			fmt.Println(e)
 			fmt.Println("1: Client:", ClientIp, " disconnect")
 			deleteNode(this, ClientIp)
 			continue
-		} else {
-			c.Close()
 		}
+		c.Close()
 	}
-	this.NodeLock.Unlock()
-	fmt.Println("Updated NodeList:", this.nodeList)
-	time.Sleep(time.Millisecond * 100)
 
+	//this.NodeLock.Unlock()
+	fmt.Println("Updated NodeList:", this.nodeList)
 }
 
 // RPC join called by a client
@@ -145,7 +144,7 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	AddNode(this, nodeJoin)
 
 	// Check all clients' connections
-	this.checkConn()
+	//this.checkConn()
 
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
@@ -161,7 +160,7 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 
 // Perform certain operation every sessionDelay
 func endSession(this *Context) {
-	defer waitGroup.Done()
+	// defer waitGroup.Done()
 	for t := range this.gameTimer.C {
 		// Check connection first:
 		this.checkConn()
@@ -200,12 +199,11 @@ func AddNode(ctx *Context, nodeJoin *NodeJoin) {
 
 	fmt.Println("NodeList:", ctx.nodeList, " len is ", len(ctx.nodeList))
 	ctx.NodeLock.Unlock()
-	fmt.Println("done AD")
 }
 
 // Listen and serve request from client
 func listenToClient(ctx *Context, rpcAddr string) {
-	defer waitGroup.Done()
+	// defer waitGroup.Done()
 	for {
 		rpc.Register(ctx)
 		listener, e := net.Listen("tcp", rpcAddr)
