@@ -26,9 +26,10 @@ type Node struct {
 
 // Message to be passed among nodes.
 type Message struct {
-	IsLeader  bool     // is this from the leader.
-	DeadNodes []string // id of dead nodes.
-	Node      Node     // interval update struct.
+	IsLeader          bool     // is this from the leader.
+	IsDirectionChange bool     // is this a direction change update.
+	DeadNodes         []string // id of dead nodes.
+	Node              Node     // interval update struct.
 }
 
 const (
@@ -322,47 +323,36 @@ func listenUDPPacket() {
 			}
 		}
 
+		if message.IsDirectionChange {
+			for _, n := range nodes {
+				if n.Id == message.Node.Id {
+					n.Direction = message.Node.Direction
+				}
+			}
+		}
+
 		if err != nil {
 			fmt.Println("Error: ", err)
 		}
-	}
-}
 
-func findCurrLoc() *Pos {
-	for i, _ := range board {
-		for j, p := range board[i] {
-			if p == nodeId {
-				return &Pos{i, j}
-			}
-		}
+		time.Sleep(400 * time.Millisecond)
 	}
-	return nil
 }
 
 func notifyPeersDirChanged(direction string) {
-	log.Println("Check if dir changed")
-	prevDirection, ok := directions[nodeId]
-	if !ok {
-		log.Fatal("Unable to get prev direction in notifyPeersDirChanged()")
-		return
-	}
+	prevDirection := myNode.Direction
 
 	// check if the direction change for node with the id
 	if prevDirection != direction {
 		log.Println("Direction for ", nodeId, " has changed from ",
 			prevDirection, " to ", direction)
 		myNode.Direction = direction
-		currLoc := findCurrLoc()
-		if currLoc != nil {
-			myNode.CurrLoc = currLoc
-		} else {
-			log.Fatal("IM LOSTTTTTT")
-		}
+		directions[nodeId] = direction
 
-		nodeJson, err := json.Marshal(myNode)
-		log.Println("Data to send: " + fmt.Sprintln(myNode))
+		msg := &Message{IsDirectionChange: true, Node: *myNode}
+		msgJson, err := json.Marshal(msg)
 		checkErr(err)
-		sendPacketsToPeers(nodeJson)
+		sendPacketsToPeers(msgJson)
 	}
 }
 

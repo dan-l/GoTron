@@ -39,17 +39,17 @@ const gCanvas = new fabric.StaticCanvas("mainCanvas");
 let gPlayerID;
 
 function handleKeyPress(event) {
-  switch (event.key) {
-    case "w":
+  switch (event.keyCode) {
+    case 87: // 'w'
       gSocket.emit("playerMove", {"direction": Direction.UP});
       break;
-    case "a":
+    case 65: // 'a'
       gSocket.emit("playerMove", {"direction": Direction.LEFT});
       break;
-    case "s":
+    case 83: // 's'
       gSocket.emit("playerMove", {"direction": Direction.DOWN});
       break;
-    case "d":
+    case 68: // 'd'
       gSocket.emit("playerMove", {"direction": Direction.RIGHT});
       break;
     default:
