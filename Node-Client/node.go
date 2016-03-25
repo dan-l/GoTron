@@ -85,7 +85,7 @@ func main() {
 
 	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
-	go httpServe()
+	// go httpServe()
 
 	waitGroup.Wait() // Wait until processes are done.
 }
@@ -274,10 +274,10 @@ func intervalUpdate() {
 	}
 }
 
-func sendPacketsToPeers(data []byte) {
+func sendPacketsToPeers(payload []byte) {
 	for _, node := range nodes {
 		if node.Id != nodeId {
-			//log.Println("Sending interval update to " + node.Id + " at ip " + node.Ip)
+			data := send("Sending interval update to "+node.Id+" at ip "+node.Ip, payload)
 			sendUDPPacket(node.Ip, data)
 		}
 	}
@@ -306,14 +306,15 @@ func listenUDPPacket() {
 
 	for {
 		n, addr, err := udpConn.ReadFromUDP(buf)
-		data := buf[0:n]
-		fmt.Println("Received ", string(data), " from ", addr)
+		msg := receive("Received packet from "+addr.String(), buf, n)
+		data := msg.Payload
 		var message Message
 		var node Node
 		err = json.Unmarshal(data, &message)
-		node = message.Node
 		checkErr(err)
+		node = message.Node
 
+		log.Println("Received ", node)
 		lastCheckin[node.Id] = time.Now()
 
 		if message.IsLeader {
@@ -332,7 +333,7 @@ func listenUDPPacket() {
 		}
 
 		if err != nil {
-			fmt.Println("Error: ", err)
+			log.Println("Error: ", err)
 		}
 
 		time.Sleep(400 * time.Millisecond)
