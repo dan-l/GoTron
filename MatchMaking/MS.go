@@ -70,11 +70,12 @@ type ValReply struct {
 type Context struct {
 	NodeLock sync.RWMutex
 
-	nodeList  map[string]*Node // map rpcIP to a node object
-	gameRoom  []*Node          // the only one game room contains all existing players
-	roomID    int              // atomically incremented game room id
-	roomLimit int
-	gameTimer *time.Timer // timer until game start
+	connections map[string]*rpc.Client // Client's IPaddr : connection
+	nodeList    map[string]*Node       // map rpcIP to a node object
+	gameRoom    []*Node                // the only one game room contains all existing players
+	roomID      int                    // atomically incremented game room id
+	roomLimit   int
+	gameTimer   *time.Timer // timer until game start
 
 }
 
@@ -90,24 +91,18 @@ func (this *Context) assignID() {
 func (this *Context) startGame() {
 	fmt.Println("Starting Game")
 	for key, _ := range this.nodeList {
-		fmt.Println("key in sg:", key)
-		c, e := rpc.Dial("tcp", key)
-		CheckError(e, 1)
 
-		fmt.Println("Dial in sg:", this.gameRoom)
 		var reply *ValReply = &ValReply{Val: ""}
-		e = c.Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
+		fmt.Println("calling startgame")
+		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
 		CheckError(e, 6)
-
-		fmt.Println("Call in sg")
-		c.Close()
-
-		fmt.Println("CLose in sg")
+		fmt.Println("startd")
 	}
 
-	// Clear the game room &
+	// Clear the game room, nodelist, and connections
 	this.gameRoom = make([]*Node, 0)
 	this.nodeList = make(map[string]*Node)
+	this.connections = make(map[string]*rpc.Client)
 
 	// Reset the timer
 	this.gameTimer.Reset(sessionDelay)
@@ -121,40 +116,37 @@ func (this *Context) makeGameRoom() {
 	}
 }
 
-// Ping clients to check if the connection is still good
+// Update NodeList and Connection based on disconnected clients
 func (this *Context) checkConn() {
 	//this.NodeLock.Lock()
 	for ClientIp, _ := range this.nodeList {
 		c, e := rpc.Dial("tcp", ClientIp)
 		if e != nil {
 			fmt.Println(e)
-			fmt.Println("1: Client:", ClientIp, " disconnect")
-			deleteNode(this, ClientIp)
+			fmt.Println("Deleting disconnected node ", ClientIp)
+			delete(this.nodeList, ClientIp)
 			continue
+		} else {
+			this.connections[ClientIp] = c
 		}
-		c.Close()
 	}
-
 	//this.NodeLock.Unlock()
-	fmt.Println("Updated NodeList:", this.nodeList)
 }
 
 // RPC join called by a client
 func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	AddNode(this, nodeJoin)
 
-	// Check all clients' connections
-	//this.checkConn()
+	this.checkConn() // Update NodeList and Connections
 
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
 		this.NodeLock.Lock()
-		this.makeGameRoom()
-		this.assignID()
+		this.makeGameRoom() // NodeList -> GameROOM
+		this.assignID()     // Assign corresponding ID to gameROOM
 		this.startGame()
 		this.NodeLock.Unlock()
 	}
-
 	return nil
 }
 
@@ -162,8 +154,8 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 func endSession(this *Context) {
 	// defer waitGroup.Done()
 	for t := range this.gameTimer.C {
-		// Check connection first:
-		this.checkConn()
+
+		this.checkConn() // Update NodeList and Connections
 
 		// At are at least 2 players in the room
 		if len(this.nodeList) >= leastPlayers {
@@ -175,29 +167,23 @@ func endSession(this *Context) {
 			this.NodeLock.Unlock()
 		} else {
 			this.gameTimer.Reset(sessionDelay)
-			log.Println("ES: NP")
-			fmt.Println("nodeList:", this.nodeList, " len is ", len(this.nodeList))
+			log.Println("ES:", len(this.nodeList), "players currently.")
 		}
+
 	}
 }
 
 /////////// Helper methods
 
-// this is called when a node disconnects
-func deleteNode(ctx *Context, rpcip string) {
-	DebugPrint(1, "Lost Node:"+rpcip)
-	delete(ctx.nodeList, rpcip)
-}
-
 // this is called when a node joins, it handles adding the node to lists
 func AddNode(ctx *Context, nodeJoin *NodeJoin) {
 	ctx.NodeLock.Lock()
-	fmt.Println("new node:", nodeJoin)
+	fmt.Println("AD: new node:", nodeJoin)
 	// Add this client to the gameRoom & NodeList
 	node := &Node{Ip: nodeJoin.Ip}
 	ctx.nodeList[nodeJoin.RpcIp] = node
 
-	fmt.Println("NodeList:", ctx.nodeList, " len is ", len(ctx.nodeList))
+	fmt.Println("AD: NodeList:", ctx.nodeList, ". There are ", len(ctx.nodeList), "players.")
 	ctx.NodeLock.Unlock()
 }
 
@@ -224,7 +210,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 6 * time.Second
+const sessionDelay time.Duration = 10 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const RpcMessage string = "NodeService.Message"
 const leastPlayers int = 2
@@ -238,11 +224,12 @@ func main() {
 
 	// setup the kv service
 	context := &Context{
-		nodeList:  make(map[string]*Node),
-		roomID:    0,
-		roomLimit: 5,
-		gameRoom:  make([]*Node, 0),
-		gameTimer: time.NewTimer(5 * time.Second),
+		connections: make(map[string]*rpc.Client),
+		nodeList:    make(map[string]*Node),
+		roomID:      0,
+		roomLimit:   3,
+		gameRoom:    make([]*Node, 0),
+		gameTimer:   time.NewTimer(5 * time.Second),
 	}
 
 	// get arguments

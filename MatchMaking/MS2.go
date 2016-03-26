@@ -124,6 +124,7 @@ func (this *Context) startGame() {
 
 	// Clear the game room &
 	this.gameRoom = make([]*Node, 0)
+	this.nodeList = make(map[string]*Node)
 
 	// Reset the timer
 	this.gameTimer.Reset(sessionDelay)
@@ -166,7 +167,6 @@ func endSession(this *Context) {
 		} else {
 			this.gameTimer.Reset(sessionDelay)
 			log.Println("ES: not enough players to start. Clock reset")
-			fmt.Println("gameRoom:", this.gameRoom, " len is ", len(this.gameRoom))
 		}
 	}
 }
@@ -183,14 +183,14 @@ func deleteNode(ctx *Context, rpcip string) {
 
 // this is called when a node joins, it handles adding the node to lists
 func AddNode(ctx *Context, nodeJoin *NodeJoin) {
-	fmt.Println("new node:", nodeJoin)
 	ctx.NodeLock.Lock()
+	fmt.Println("AD: new node:", nodeJoin)
 
 	// Add this client to the gameRoom & NodeList
 	node := &Node{Ip: nodeJoin.Ip}
 	ctx.nodeList[nodeJoin.RpcIp] = node
 
-	fmt.Println("NodeList:", ctx.nodeList, " len is ", len(ctx.nodeList))
+	fmt.Println("AD: NodeList:", ctx.nodeList, " len is ", len(ctx.nodeList))
 	ctx.NodeLock.Unlock()
 }
 
@@ -232,7 +232,7 @@ func main() {
 	context := &Context{
 		nodeList:  make(map[string]*Node),
 		roomID:    0,
-		roomLimit: 5,
+		roomLimit: 3,
 		gameRoom:  make([]*Node, 0),
 		gameTimer: time.NewTimer(5 * time.Second),
 	}

@@ -25,7 +25,7 @@ type NodeService int
 func (kvs *NodeService) StartGame(args *GameArgs, reply *ValReply) error {
 	log.Println("Starting game")
 	fmt.Println("nodelist:", args.NodeList)
-	reply.Val = "ok"
+	reply.Val = "cool"
 	return nil
 }
 
@@ -42,7 +42,7 @@ type ValReply struct {
 }
 
 type GameArgs struct {
-	NodeList []Node
+	NodeList []*Node
 }
 
 type Node struct {
