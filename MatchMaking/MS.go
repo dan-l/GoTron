@@ -90,8 +90,11 @@ func (this *Context) assignID() {
 // Notify all cients in current session about other players in the same room
 func (this *Context) startGame() {
 	fmt.Println("Starting Game")
+	fmt.Println("Connection Number:", len(this.connections))
 	for key, _ := range this.nodeList {
-
+		fmt.Println("Trying to dial", key)
+		fmt.Println("dialed", key)
+		fmt.Println(this.connections[key])
 		var reply *ValReply = &ValReply{Val: ""}
 		fmt.Println("calling startgame")
 		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
@@ -127,6 +130,7 @@ func (this *Context) checkConn() {
 			delete(this.nodeList, ClientIp)
 			continue
 		} else {
+			// Update connection for each client
 			this.connections[ClientIp] = c
 		}
 	}
@@ -152,7 +156,7 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 
 // Perform certain operation every sessionDelay
 func endSession(this *Context) {
-	// defer waitGroup.Done()
+	defer waitGroup.Done()
 	for t := range this.gameTimer.C {
 
 		this.checkConn() // Update NodeList and Connections
@@ -183,13 +187,13 @@ func AddNode(ctx *Context, nodeJoin *NodeJoin) {
 	node := &Node{Ip: nodeJoin.Ip}
 	ctx.nodeList[nodeJoin.RpcIp] = node
 
-	fmt.Println("AD: NodeList:", ctx.nodeList, ". There are ", len(ctx.nodeList), "players.")
+	fmt.Println("AD: NodeList:", ctx.nodeList, ". Numb:", len(ctx.nodeList), "players.")
 	ctx.NodeLock.Unlock()
 }
 
 // Listen and serve request from client
 func listenToClient(ctx *Context, rpcAddr string) {
-	// defer waitGroup.Done()
+	defer waitGroup.Done()
 	for {
 		rpc.Register(ctx)
 		listener, e := net.Listen("tcp", rpcAddr)

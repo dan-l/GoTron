@@ -115,6 +115,7 @@ func (this *Context) startGame() {
 	for key, _ := range this.nodeList {
 		fmt.Println("Trying to dial", key)
 		fmt.Println("dialed", key)
+		fmt.Print(connections[key])
 		var reply *ValReply = &ValReply{Val: ""}
 		fmt.Println("calling startgame")
 		e := connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
