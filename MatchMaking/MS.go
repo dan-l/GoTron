@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	//"sort"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -67,26 +67,48 @@ type ValReply struct {
 	Val string // value; depends on the call
 }
 
+// MS node
+type MsNode struct {
+	Node *Node
+	Id   int
+}
+
+type MsNodeList []*MsNode
+
+func (ml MsNodeList) Swap(i, j int)      { ml[i], ml[j] = ml[j], ml[i] }
+func (ml MsNodeList) Len() int           { return len(ml) }
+func (ml MsNodeList) Less(i, j int) bool { return ml[i].Id < ml[j].Id }
+
 // main context
 type Context struct {
 	NodeLock sync.RWMutex
 
 	connections map[string]*rpc.Client // Client's IPaddr : connection
-	nodeList    map[string]*Node       // map rpcIP to a node object
+	nodeList    map[string]*MsNode     // map rpcIP to a node object
 	gameRoom    []*Node                // the only one game room contains all existing players
 	clientNum   int                    // the order of incoming clients
 	roomLimit   int
 	gameTimer   *time.Timer // timer until game start
-
 }
 
 // Construct a game room from nodeList
 func (this *Context) makeGameRoom() {
 	fmt.Println("Making a Game room")
-	for _, node := range this.nodeList {
-		this.gameRoom = append(this.gameRoom, node)
-	}
 
+	// Sort the MsNodeList based on id
+	ml := make(MsNodeList, len(this.nodeList))
+	i := 0
+
+	for _, v := range this.nodeList {
+		ml[i] = v
+		i++
+	}
+	sort.Sort(ml)
+
+	// Create game room from MsNodeList to keep order
+	for i := range ml {
+		this.gameRoom = append(this.gameRoom, ml[i].Node)
+	}
 }
 
 // Assign id to each client
@@ -115,7 +137,7 @@ func (this *Context) startGame() {
 
 	// Clear the game room, nodelist, and connections
 	this.gameRoom = make([]*Node, 0)
-	this.nodeList = make(map[string]*Node)
+	this.nodeList = make(map[string]*MsNode)
 	this.connections = make(map[string]*rpc.Client)
 
 	// Reset the timer
@@ -173,8 +195,8 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	if len(this.nodeList) >= this.roomLimit {
 		this.NodeLock.Lock()
 		fmt.Println("Join: Starting Game")
-		this.makeGameRoom() // NodeList -> GameROOM
-		this.assignID()     // Assign corresponding ID to gameROOM
+		this.makeGameRoom()
+		this.assignID()
 		this.startGame()
 		this.NodeLock.Unlock()
 	}
@@ -199,7 +221,7 @@ func endSession(this *Context) {
 			this.NodeLock.Unlock()
 		} else {
 			this.gameTimer.Reset(sessionDelay)
-			fmt.Println("ES:", len(this.nodeList), "players")
+			log.Println("ES:", len(this.nodeList), "players")
 			//log.Println("ES:", len(this.nodeList), "players currently.")
 		}
 
@@ -214,9 +236,10 @@ func AddNode(ctx *Context, nodeJoin *NodeJoin) {
 	fmt.Println("AD: new node:", nodeJoin)
 	// Add this client to the gameRoom & NodeList
 	node := &Node{Ip: nodeJoin.Ip}
-	ctx.nodeList[nodeJoin.RpcIp] = node
+	msn := &MsNode{Node: node, Id: ctx.clientNum}
+	ctx.nodeList[nodeJoin.RpcIp] = msn
 
-	fmt.Println("AD: NodeList:", ctx.nodeList, ". Numb:", len(ctx.nodeList), "players.")
+	log.Println("AD: NodeList:", ctx.nodeList, ". Numb:", len(ctx.nodeList), "players.")
 	ctx.NodeLock.Unlock()
 }
 
@@ -258,7 +281,7 @@ func main() {
 	// setup the kv service
 	context := &Context{
 		connections: make(map[string]*rpc.Client),
-		nodeList:    make(map[string]*Node),
+		nodeList:    make(map[string]*MsNode),
 		clientNum:   0,
 		roomLimit:   3,
 		gameRoom:    make([]*Node, 0),
