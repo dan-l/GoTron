@@ -85,8 +85,7 @@ func main() {
 
 	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
-	// go httpServe()
-
+	go httpServe()
 	waitGroup.Wait() // Wait until processes are done.
 }
 

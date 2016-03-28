@@ -165,12 +165,19 @@ function handleInitialConfig(initialConfig) {
   gPlayerID = initialConfig.LocalID;
 }
 
+/**
+ * Starts the game when we are paired with enough players.
+ */
+function startGame() {
+   gSocket.on("gameStateUpdate", handleGameStateUpdate);
+   window.onkeydown = handleKeyPress;
+   document.getElementById('intro').style.display = 'none';
+}
+
 function main() {
   // Register handlers.
   gSocket.on("initialConfig", handleInitialConfig);
-  gSocket.on("gameStateUpdate", handleGameStateUpdate);
-
-  window.onkeydown = handleKeyPress;
+  gSocket.on("startGame", startGame);
 }
 
 main();

@@ -73,17 +73,11 @@ func setupInitialConfig() InitialConfig {
 //       actually reasonable.
 var gSO socketio.Socket
 
-func httpServe() {
-	defer waitGroup.Done()
-	server, err := socketio.NewServer(nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	server.On("connection", func(so socketio.Socket) {
-		gSO = so
-		log.Println("on connection")
-		so.Join("chat")
-		so.On("playerMove", func(playerMove map[string]string) {
+// Starts the UI game screen.
+func startGameUI() {
+	if gSO != nil {
+		gSO.Emit("initialConfig", setupInitialConfig())
+		gSO.On("playerMove", func(playerMove map[string]string) {
 			direction, ok := playerMove["direction"]
 			if !ok {
 				// TODO Output error message somewhere
@@ -92,13 +86,26 @@ func httpServe() {
 
 			notifyPeersDirChanged(direction)
 		})
-		so.On("disconnection", func() {
+		gSO.On("disconnection", func() {
 			log.Println("on disconnect")
 		})
-		so.Emit("initialConfig", setupInitialConfig())
-		// After sending the config, we need to send an initial game state
-		// update so the JS layer renders everything.
-		so.Emit("gameStateUpdate", board)
+
+		// Start the game.
+		gSO.Emit("startGame", nil)
+	}
+}
+
+func httpServe() {
+	defer waitGroup.Done()
+	server, err := socketio.NewServer(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// TODO: For some weird reason, "connection" is invoked many times when there are multiple browser windows all pointing to the same localhost UI port, causing the UI to not start properly. A dumb fix for this is to only allow ONE connection.
+	server.SetMaxConnection(1)
+	server.On("connection", func(so socketio.Socket) {
+		log.Println("on connection")
+		gSO = so
 	})
 	server.On("error", func(so socketio.Socket, err error) {
 		log.Println("error:", err)
