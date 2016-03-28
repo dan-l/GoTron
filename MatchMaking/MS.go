@@ -102,7 +102,8 @@ func (this *Context) startGame() {
 		fmt.Println("Trying to dial", key)
 		fmt.Println("dialed", key)
 		var reply *ValReply = &ValReply{Val: ""}
-		fmt.Println("calling startgame with gameroom = ", this.gameRoom)
+		fmt.Println("calling startgame with connections = ", this.connections)
+		fmt.Println("c is:", this.connections[key])
 		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
 		CheckError(e, 6)
 		fmt.Println("startd")
@@ -131,11 +132,12 @@ func (this *Context) checkConn() {
 		} else {
 			// Update connection for each client
 			fmt.Println("client: ", ClientIp, " is good.")
+			fmt.Println("c is", c)
 			this.connections[ClientIp] = c
 		}
 	}
 	this.NodeLock.Unlock()
-	fmt.Println("Finish CheckConn")
+	fmt.Println("Finish CheckConn: connections = ", this.connections)
 }
 
 // RPC join called by a client
