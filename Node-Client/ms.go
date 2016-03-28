@@ -30,7 +30,8 @@ func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
 	nodes = args.NodeList
 	log.Println("Starting game with nodes: " + printNodes())
 	msService.Close()
-	startGame() // in node.go, call when rpc is working
+	startGame()   // in node.go, call when rpc is working
+	startGameUI() // in httpServer.go, transition to game screen on the client.
 	return nil
 }
 

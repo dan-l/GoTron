@@ -6,23 +6,23 @@ import (
 )
 
 type Msg struct {
-	Content, RealTimestamp string
+	Payload       []byte
+	RealTimestamp string
 }
 
 var Logger *govec.GoLog
 
 func initLogging() {
-	Logger = govec.Initialize("GoTron", "GoTron")
+	Logger = govec.Initialize(nodeAddr, nodeAddr)
 }
 
-func send(msg string) []byte {
-	outgoingMessage := Msg{msg, time.Now().String()}
-	return Logger.PrepareSend("Sending message to server", outgoingMessage)
+func send(msg string, payload []byte) []byte {
+	outgoingMessage := Msg{payload, time.Now().String()}
+	return Logger.PrepareSend(msg, outgoingMessage)
 }
 
-func receive(msg string) *Msg {
+func receive(msg string, buf []byte, n int) *Msg {
 	incommingMessage := new(Msg)
-	var buf [512]byte
-	Logger.UnpackReceive("Received Message From Client", buf[0:], &incommingMessage)
+	Logger.UnpackReceive(msg, buf[0:n], &incommingMessage)
 	return incommingMessage
 }

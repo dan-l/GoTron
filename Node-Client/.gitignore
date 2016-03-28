@@ -20,7 +20,7 @@ _cgo_export.*
 _testmain.go
 
 .vendor
-GoTron-Log.txt
+*Log.txt
 
 *.exe
 *.test
