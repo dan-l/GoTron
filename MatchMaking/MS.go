@@ -138,6 +138,7 @@ func (this *Context) checkConn() {
 				fmt.Println(e)
 				fmt.Println("Deleting disconnected node ", ClientIp)
 				delete(this.nodeList, ClientIp)
+				delete(this.connections, ClientIp)
 				continue
 			} else {
 				// Update connection for each client
