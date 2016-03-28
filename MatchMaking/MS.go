@@ -79,24 +79,30 @@ type Context struct {
 
 }
 
+// Construct a game room from nodeList
+func (this *Context) makeGameRoom() {
+	fmt.Println("Making a Game room")
+	for _, node := range this.nodeList {
+		this.gameRoom = append(this.gameRoom, node)
+	}
+}
+
 // Assign id to each client
 func (this *Context) assignID() {
+	fmt.Println("Assigning IDs")
 	for index, client := range this.gameRoom {
 		client.Id = "p" + strconv.Itoa(index+1)
 	}
-	fmt.Println("Finish assigningID:", this.gameRoom)
 }
 
 // Notify all cients in current session about other players in the same room
 func (this *Context) startGame() {
-	fmt.Println("Starting Game")
 	fmt.Println("Connection Number:", len(this.connections))
 	for key, _ := range this.nodeList {
 		fmt.Println("Trying to dial", key)
 		fmt.Println("dialed", key)
-		fmt.Println(this.connections[key])
 		var reply *ValReply = &ValReply{Val: ""}
-		fmt.Println("calling startgame")
+		fmt.Println("calling startgame with gameroom = ", this.gameRoom)
 		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
 		CheckError(e, 6)
 		fmt.Println("startd")
@@ -112,16 +118,9 @@ func (this *Context) startGame() {
 	fmt.Println("DONE StartGame")
 }
 
-// Construct a game room from nodeList
-func (this *Context) makeGameRoom() {
-	for _, node := range this.nodeList {
-		this.gameRoom = append(this.gameRoom, node)
-	}
-}
-
 // Update NodeList and Connection based on disconnected clients
 func (this *Context) checkConn() {
-	//this.NodeLock.Lock()
+	this.NodeLock.Lock()
 	for ClientIp, _ := range this.nodeList {
 		c, e := rpc.Dial("tcp", ClientIp)
 		if e != nil {
@@ -131,21 +130,24 @@ func (this *Context) checkConn() {
 			continue
 		} else {
 			// Update connection for each client
+			fmt.Println("client: ", ClientIp, " is good.")
 			this.connections[ClientIp] = c
 		}
 	}
-	//this.NodeLock.Unlock()
+	this.NodeLock.Unlock()
+	fmt.Println("Finish CheckConn")
 }
 
 // RPC join called by a client
 func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	AddNode(this, nodeJoin)
 
-	this.checkConn() // Update NodeList and Connections
+	//this.checkConn() // Update NodeList and Connections
 
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
 		this.NodeLock.Lock()
+		fmt.Println("Join: Starting Game")
 		this.makeGameRoom() // NodeList -> GameROOM
 		this.assignID()     // Assign corresponding ID to gameROOM
 		this.startGame()
@@ -164,6 +166,7 @@ func endSession(this *Context) {
 		// At are at least 2 players in the room
 		if len(this.nodeList) >= leastPlayers {
 			this.NodeLock.Lock()
+			fmt.Println("ES: Starting Game")
 			this.makeGameRoom()
 			this.assignID()
 			this.startGame()
@@ -214,7 +217,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 10 * time.Second
+const sessionDelay time.Duration = 7 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const RpcMessage string = "NodeService.Message"
 const leastPlayers int = 2
