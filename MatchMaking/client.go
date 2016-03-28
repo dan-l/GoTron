@@ -25,13 +25,14 @@ type NodeService int
 func (kvs *NodeService) StartGame(args *GameArgs, reply *ValReply) error {
 	log.Println("Starting game")
 	fmt.Println("nodelist:", args.NodeList)
-	reply.Val = "ok"
+	reply.Val = "cool"
 	return nil
 }
 
 // This RPC function serves as a way for the Matchmaking service to send text to this node.
 func (nc *NodeService) Message(args *GameArgs, response *ValReply) error {
-	log.Println("Received message:" + response.Val)
+	log.Println("Received message:", args.NodeList)
+	response.Val = "ok"
 	return nil
 }
 
@@ -41,7 +42,7 @@ type ValReply struct {
 }
 
 type GameArgs struct {
-	NodeList []*Node
+	NodeList []Node
 }
 
 type Node struct {
