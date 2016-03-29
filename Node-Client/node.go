@@ -178,12 +178,17 @@ func startGame() {
 
 	go listenUDPPacket()
 	go intervalUpdate()
+	go GameStateUpdate()
 	go tickGame()
-
 	go handleNodeFailure()
 }
 
-// Each tick of the game.
+// Leade's Role: Leader notify other peers
+func GameStateUpdate() {
+
+}
+
+// Each tick of the game
 func tickGame() {
 	if isPlaying == false {
 		return
@@ -325,6 +330,12 @@ func listenUDPPacket() {
 			for _, n := range message.DeadNodes {
 				removeNodeFromList(n)
 			}
+
+			// Construct history of each node based on the incoming message
+
+		} else {
+
+			// Store the hisotry from the leader
 		}
 
 		if message.IsDirectionChange {
@@ -333,6 +344,7 @@ func listenUDPPacket() {
 					n.Direction = message.Node.Direction
 				}
 			}
+
 		}
 
 		if err != nil {

@@ -218,7 +218,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 10 * time.Second
+const sessionDelay time.Duration = 7 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const leastPlayers int = 2
 
