@@ -215,6 +215,10 @@ func tickGame() {
 				log.Println("NODE " + node.Id + " IS DEAD")
 				// We don't update the position to a new value
 				board[y][x] = "d" + strconv.Itoa(playerIndex) // Dead node
+				if node.Id == nodeId && isPlaying {
+					gSO.Emit("playerDead")
+					isPlaying = false
+				}
 			} else {
 				// Update player's new position.
 				board[new_y][new_x] = "p" + strconv.Itoa(playerIndex)

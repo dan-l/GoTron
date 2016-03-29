@@ -170,8 +170,17 @@ function handleInitialConfig(initialConfig) {
  */
 function startGame() {
    gSocket.on("gameStateUpdate", handleGameStateUpdate);
+   gSocket.on("playerDead", onPlayerDeath)
    window.onkeydown = handleKeyPress;
    document.getElementById('intro').style.display = 'none';
+}
+
+/**
+ * Removes ability to control character.
+ */
+function onPlayerDeath() {
+    window.onkeydown = null;
+    document.getElementById('message').innerHTML = '<h3 style="color:red">You are dead!</h3>'
 }
 
 function main() {
