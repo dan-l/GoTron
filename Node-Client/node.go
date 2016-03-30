@@ -179,7 +179,6 @@ func startGame() {
 	go listenUDPPacket()
 	go intervalUpdate()
 	go tickGame()
-
 	go handleNodeFailure()
 }
 
