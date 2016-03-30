@@ -95,19 +95,6 @@ func main() {
 
 // Initialize variables.
 func init() {
-	board = [BOARD_SIZE][BOARD_SIZE]string{
-		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-		[BOARD_SIZE]string{"", "p1", "", "", "", "", "", "", "p3", ""},
-		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-		[BOARD_SIZE]string{"", "p5", "", "", "", "", "", "", "", ""},
-		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "p6", ""},
-		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-		[BOARD_SIZE]string{"", "p4", "", "", "", "", "", "", "p2", ""},
-		[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	}
-
 	directions = map[string]string{
 		"p1": DIRECTION_RIGHT,
 		"p2": DIRECTION_LEFT,
@@ -124,6 +111,10 @@ func init() {
 		"p4": &Pos{1, 8},
 		"p5": &Pos{4, 1},
 		"p6": &Pos{5, 8},
+	}
+
+	for player, pos := range initialPosition {
+		board[pos.X][pos.Y] = player
 	}
 
 	nodes = make([]*Node, 0)
