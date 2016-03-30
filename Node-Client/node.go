@@ -185,6 +185,22 @@ func startGame() {
 	go handleNodeFailure()
 }
 
+// Update the board based on leader's history
+func UpdateBoard() {
+	fmt.Println("Updating Board")
+	for id, _ := range PeerHistory {
+		buf := []byte(id)
+		playerIndex := string(buf[1])
+		for i, pos := range PeerHistory[id] {
+			if i == len(PeerHistory[id])-1 {
+				board[pos.Y][pos.X] = "p" + playerIndex
+			} else {
+				board[pos.Y][pos.X] = "t" + playerIndex
+			}
+		}
+	}
+}
+
 // Each tick of the game
 func tickGame() {
 	if isPlaying == false {
@@ -319,7 +335,6 @@ func listenUDPPacket() {
 		err = json.Unmarshal(data, &message)
 		checkErr(err)
 		node = message.Node
-		fmt.Println("LU: listening")
 
 		log.Println("LU: Received ", node)
 		lastCheckin[node.Id] = time.Now()
@@ -332,22 +347,13 @@ func listenUDPPacket() {
 
 			// Cache history info from the leader
 			PeerHistory = message.History
+			UpdateBoard()
 		} else if isLeader() {
 			log.Println("LU: Leader packing")
 			// If I am the leader -> Update PeerHistory with message
 			PeerHistory[message.Node.Id] = append(PeerHistory[message.Node.Id], message.Node.CurrLoc)
-			log.Println(PeerHistory[message.Node.Id])
+			log.Println("#Move by", message.Node.Id, " is ", len(PeerHistory[message.Node.Id]))
 		}
-
-		// TODO: Need to determine how to update the board properly
-		// Update Peers' location based on the message.History
-		// History is empty
-		// for k, v := range message.History {
-		// 	switch k {
-		// 	case node.Id:
-		// 		new_y = intMax(0, y-1)
-		// 	}
-		// }
 
 		if message.IsDirectionChange {
 			for _, n := range nodes {
