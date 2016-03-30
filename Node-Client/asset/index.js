@@ -170,7 +170,8 @@ function handleInitialConfig(initialConfig) {
  */
 function startGame() {
    gSocket.on("gameStateUpdate", handleGameStateUpdate);
-   gSocket.on("playerDead", onPlayerDeath)
+   gSocket.on("playerDead", onPlayerDeath);
+   gSocket.on("victory", onPlayerVictory);
    window.onkeydown = handleKeyPress;
    document.getElementById('intro').style.display = 'none';
 }
@@ -180,7 +181,15 @@ function startGame() {
  */
 function onPlayerDeath() {
     window.onkeydown = null;
-    document.getElementById('message').innerHTML = '<h3 style="color:red">You are dead!</h3>'
+    document.getElementById('message').innerHTML = '<h3 style="color:red">You are dead!</h3>';
+}
+
+/**
+ * Player won the game.
+ */
+function onPlayerVictory() {
+     window.onkeydown = null;
+     document.getElementById('message').innerHTML = '<h3 style="color:red"><marquee>YOU WIN!</h3>';
 }
 
 function main() {
