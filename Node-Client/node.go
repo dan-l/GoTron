@@ -26,10 +26,11 @@ type Node struct {
 
 // Message to be passed among nodes.
 type Message struct {
-	IsLeader          bool     // is this from the leader.
-	IsDirectionChange bool     // is this a direction change update.
-	DeadNodes         []string // id of dead nodes.
-	Node              Node     // interval update struct.
+	IsLeader          bool              // is this from the leader.
+	IsDirectionChange bool              // is this a direction change update.
+	DeadNodes         []string          // id of dead nodes.
+	Node              Node              // interval update struct.
+	History           map[string][]*Pos // Id to a list of locations
 }
 
 const (
@@ -48,6 +49,7 @@ var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
 var nodes []*Node         // All nodes in the game.
 var myNode *Node          // My node.
+var PeerHistory map[string][]*Pos
 
 // #LEADER specific.
 var deadNodes []string // id of dead nodes found.
@@ -123,6 +125,7 @@ func init() {
 	}
 
 	nodes = make([]*Node, 0)
+	PeerHistory = make(map[string][]*Pos)
 	lastCheckin = make(map[string]time.Time)
 	deadNodes = make([]string, 0)
 	tickRate = 500 * time.Millisecond
@@ -178,14 +181,8 @@ func startGame() {
 
 	go listenUDPPacket()
 	go intervalUpdate()
-	go GameStateUpdate()
 	go tickGame()
 	go handleNodeFailure()
-}
-
-// Leade's Role: Leader notify other peers
-func GameStateUpdate() {
-
 }
 
 // Each tick of the game
@@ -269,7 +266,7 @@ func intervalUpdate() {
 	for {
 		var message *Message
 		if isLeader() {
-			message = &Message{IsLeader: true, DeadNodes: deadNodes, Node: *myNode}
+			message = &Message{IsLeader: true, DeadNodes: deadNodes, Node: *myNode, History: PeerHistory}
 		} else {
 			message = &Message{Node: *myNode}
 		}
@@ -314,29 +311,42 @@ func listenUDPPacket() {
 
 	for {
 		n, addr, err := udpConn.ReadFromUDP(buf)
-		msg := receive("Received packet from "+addr.String(), buf, n)
+		msg := receive("LU: Received packet from "+addr.String(), buf, n)
 		data := msg.Payload
 		var message Message
 		var node Node
 		err = json.Unmarshal(data, &message)
 		checkErr(err)
 		node = message.Node
+		fmt.Println("LU: listening")
 
-		log.Println("Received ", node)
+		log.Println("LU: Received ", node)
 		lastCheckin[node.Id] = time.Now()
 
 		if message.IsLeader {
-			log.Println("deadNodes are: ", message.DeadNodes)
+			log.Println("LU: deadNodes are: ", message.DeadNodes)
 			for _, n := range message.DeadNodes {
 				removeNodeFromList(n)
 			}
 
-			// Construct history of each node based on the incoming message
-
-		} else {
-
-			// Store the hisotry from the leader
+			// Cache history info from the leader
+			PeerHistory = message.History
+		} else if isLeader() {
+			log.Println("LU: Leader packing")
+			// If I am the leader -> Update PeerHistory with message
+			PeerHistory[message.Node.Id] = append(PeerHistory[message.Node.id], message.Node.CurrLoc)
+			log.Println(len(PeerHistory))
 		}
+
+		// TODO: Need to determine how to update the board properly
+		// Update Peers' location based on the message.History
+		// History is empty
+		// for k, v := range message.History {
+		// 	switch k {
+		// 	case node.Id:
+		// 		new_y = intMax(0, y-1)
+		// 	}
+		// }
 
 		if message.IsDirectionChange {
 			for _, n := range nodes {
@@ -344,7 +354,6 @@ func listenUDPPacket() {
 					n.Direction = message.Node.Direction
 				}
 			}
-
 		}
 
 		if err != nil {
@@ -393,11 +402,11 @@ func handleNodeFailure() {
 	// check if the time it last checked in exceed CHECKIN_INTERVAL
 	for {
 		if isLeader() {
-			log.Println("Im a leader.")
+			log.Println("HN: Im a leader.")
 			for _, node := range nodes {
 				if node.Id != nodeId {
 					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
-						log.Println(node.Id, " HAS DIED")
+						log.Println("HN: ", node.Id, " HAS DIED")
 						// TODO tell rest of nodes this node has died
 						// --> leader should periodically send out active nodes in the system
 						// --> so here we just have to remove it from the nodes list.
@@ -408,11 +417,11 @@ func handleNodeFailure() {
 				}
 			}
 		} else {
-			log.Println("Im a node.")
+			log.Println("HN: Im a node.")
 			// Continually check if leader is alive.
 			leaderId := nodes[0].Id
 			if hasExceededThreshold(lastCheckin[leaderId].UnixNano()) {
-				log.Println("LEADER ", leaderId, " HAS DIED.")
+				log.Println("HN: LEADER ", leaderId, " HAS DIED.")
 				removeNodeFromList(leaderId)
 				// TODO: remove leader? or ask other peers first?
 			}
