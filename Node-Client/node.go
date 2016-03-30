@@ -228,6 +228,7 @@ func tickGame() {
 				node.CurrLoc.Y = new_y
 			}
 		}
+
 		renderGame()
 		time.Sleep(tickRate)
 	}
@@ -334,8 +335,8 @@ func listenUDPPacket() {
 		} else if isLeader() {
 			log.Println("LU: Leader packing")
 			// If I am the leader -> Update PeerHistory with message
-			PeerHistory[message.Node.Id] = append(PeerHistory[message.Node.id], message.Node.CurrLoc)
-			log.Println(len(PeerHistory))
+			PeerHistory[message.Node.Id] = append(PeerHistory[message.Node.Id], message.Node.CurrLoc)
+			log.Println(PeerHistory[message.Node.Id])
 		}
 
 		// TODO: Need to determine how to update the board properly
