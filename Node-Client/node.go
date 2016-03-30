@@ -28,6 +28,7 @@ type Node struct {
 type Message struct {
 	IsLeader          bool     // is this from the leader.
 	IsDirectionChange bool     // is this a direction change update.
+	IsDeathReport     bool     // is this a death report.
 	DeadNodes         []string // id of dead nodes.
 	Node              Node     // interval update struct.
 }
@@ -43,12 +44,14 @@ const (
 
 // Game variables.
 var isPlaying bool        // Is the game in session.
+var imAlive bool          // Am I alive.
 var nodeId string         // Name of client.
 var nodeIndex string      // Player number (1 - 6).
 var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
 var nodes []*Node         // All nodes in the game.
 var myNode *Node          // My node.
+var aliveNodes int        // Number of alive nodes.
 
 // #LEADER specific.
 var deadNodes []string // id of dead nodes found.
@@ -159,7 +162,9 @@ func startGame() {
 
 	// ================================================= //
 
+	imAlive = true
 	isPlaying = true
+	aliveNodes = len(nodes)
 
 	go listenUDPPacket()
 	go intervalUpdate()
@@ -174,6 +179,9 @@ func tickGame() {
 	}
 
 	for {
+		if isPlaying == false {
+			return
+		}
 		for i, node := range nodes {
 			playerIndex := i + 1
 			direction := node.Direction
@@ -199,13 +207,14 @@ func tickGame() {
 				localLog("NODE " + node.Id + " IS DEAD")
 				// We don't update the position to a new value
 				board[y][x] = "d" + strconv.Itoa(playerIndex) // Dead node
-				if node.Id == nodeId && isPlaying {
+				if node.Id == nodeId && imAlive {
+					imAlive = false
 					if gSO != nil {
 						gSO.Emit("playerDead")
+						reportMySorrowfulDeath()
 					} else {
 						log.Fatal("Socket object somehow still not set up")
 					}
-					isPlaying = false
 				}
 			} else {
 				// Update player's new position.
@@ -299,6 +308,8 @@ func renderGame() {
 	//       that's actually reasonable.
 	if gSO != nil {
 		gSO.Emit("gameStateUpdate", board)
+	} else {
+		log.Println("gSO is null though")
 	}
 }
 
@@ -373,6 +384,18 @@ func listenUDPPacket() {
 			}
 		}
 
+		if message.IsDeathReport {
+			aliveNodes = aliveNodes - 1
+			log.Println("**** DEATH REPORT *** size is now ", strconv.Itoa(aliveNodes))
+			if aliveNodes == 1 {
+				// Oh wow, I'm the only one alive!
+				if gSO != nil {
+					gSO.Emit("victory")
+					isPlaying = false
+				}
+			}
+		}
+
 		// Received a direction change from a peer.
 		// Match the state of peer by predicting its path.
 		if message.IsDirectionChange {
@@ -389,6 +412,14 @@ func listenUDPPacket() {
 
 		time.Sleep(400 * time.Millisecond)
 	}
+}
+
+// Tell my beloved friends I have died.
+func reportMySorrowfulDeath() {
+	msg := &Message{IsDeathReport: true, Node: *myNode}
+	msgJson, err := json.Marshal(msg)
+	checkErr(err)
+	sendPacketsToPeers(msgJson)
 }
 
 func notifyPeersDirChanged(direction string) {
