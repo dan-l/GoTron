@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/arcaneiceman/GoVector/govec"
+	"strings"
 	"time"
 )
 
@@ -13,7 +14,9 @@ type Msg struct {
 var Logger *govec.GoLog
 
 func initLogging() {
-	Logger = govec.Initialize(nodeAddr, nodeAddr)
+	// Windows doesn't accept colons in paths, so we filter them out here.
+	logFileName := strings.Replace(nodeAddr, ":", "", -1)
+	Logger = govec.Initialize(nodeAddr, logFileName)
 }
 
 func send(msg string, payload []byte) []byte {
