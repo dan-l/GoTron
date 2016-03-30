@@ -1,7 +1,7 @@
 "use strict";
 
-const PLAYER_RECT_WIDTH = 16;
-const PLAYER_RECT_HEIGHT = 16;
+const PLAYER_RECT_WIDTH = 50;
+const PLAYER_RECT_HEIGHT = 50;
 const Direction = {
   UP: "U",
   DOWN: "D",
