@@ -1,62 +1,13 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"github.com/googollee/go-socket.io"
 	"github.com/pkg/browser"
 	"log"
 	"net/http"
-	"strings"
 )
 
-// A fake board for testing/bring up purposes.
-// TODO: Remove this once the necessary bring up is done.
-var httpServerFakeBoard [BOARD_SIZE][BOARD_SIZE]string = [BOARD_SIZE][BOARD_SIZE]string{
-	[BOARD_SIZE]string{"p1", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"", "", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"t6", "d6", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"t5", "p5", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"t4", "d4", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"t3", "p3", "", "", "", "", "", "", "", ""},
-	[BOARD_SIZE]string{"t2", "p2", "", "", "", "", "", "", "", ""},
-}
-var playerPos Pos = Pos{0, 0}
 var playerID string
-
-// Updates the internal state of the board, then returns the new state.
-func updateInternalState(direction string) ([BOARD_SIZE][BOARD_SIZE]string, error) {
-	var playerCode string = httpServerFakeBoard[playerPos.Y][playerPos.X]
-	if len(playerCode) != 2 {
-		err := errors.New(fmt.Sprintln("Player code", playerCode, "is invalid"))
-		return httpServerFakeBoard, err
-	}
-
-	// Replace the current position with a trail.
-	trailPlayerCode := strings.Replace(playerCode, "p", "t", 1)
-	httpServerFakeBoard[playerPos.Y][playerPos.X] = trailPlayerCode
-
-	if direction == "U" {
-		playerPos.Y = intMax(0, playerPos.Y-1)
-	} else if direction == "D" {
-		playerPos.Y = intMin(BOARD_SIZE-1, playerPos.Y+1)
-	} else if direction == "L" {
-		playerPos.X = intMax(0, playerPos.X-1)
-	} else if direction == "R" {
-		playerPos.X = intMin(BOARD_SIZE-1, playerPos.X+1)
-	} else {
-		err := errors.New(fmt.Sprintln("Direction", direction, "is invalid"))
-		return httpServerFakeBoard, err
-	}
-
-	// Set the new position.
-	httpServerFakeBoard[playerPos.Y][playerPos.X] = playerCode
-
-	return httpServerFakeBoard, nil
-}
 
 type InitialConfig struct {
 	LocalID string // The ID of the local node ("p1", "p2" etc).
