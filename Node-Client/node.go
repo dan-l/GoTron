@@ -44,6 +44,7 @@ const (
 // Game variables.
 var isPlaying bool        // Is the game in session.
 var nodeId string         // Name of client.
+var nodeIndex string      // Player number (1 - 6).
 var nodeAddr string       // IP of client.
 var httpServerAddr string // HTTP Server IP.
 var nodes []*Node         // All nodes in the game.
@@ -144,30 +145,14 @@ func intMin(a int, b int) int {
 }
 
 func startGame() {
-	// ============= FOR TESTING PURPOSES ============== //
-	// Add some enemies. TODO: CurrLoc for peers should be initialized elsewhere.
-	// Hardcoded list of clients
-	// NOTE: Do not use addresses that lack an IP/hostname such as ":8767".
-	//       It breaks running the program on Windows.
-	//client1 := Node{Id: "p1", Ip: "localhost:8767", CurrLoc: &Pos{1, 1}}
-	//client2 := Node{Id: "p2", Ip: "localhost:8768", CurrLoc: &Pos{8, 8}}
-	//client3 := Node{Id: "p3", Ip: "localhost:8769", CurrLoc: &Pos{8, 1}}
-	//nodes = append(nodes, client1, client2, client3)
-
-	// The above is commented out because we are now hooked up with the Matchmaking server.
-
-	// Init everyone's location and find myself.
-	for _, node := range nodes {
-		node.Direction = directions[node.Id]
-	}
-
-	// find myself
-	for _, node := range nodes {
+	// Find myself and init variables.
+	for i, node := range nodes {
 		node.CurrLoc = initialPosition[node.Id]
 		node.Direction = directions[node.Id]
 		if node.Ip == nodeAddr {
 			myNode = node
 			nodeId = node.Id
+			nodeIndex = strconv.Itoa(i + 1)
 		}
 		lastCheckin[node.Id] = time.Now()
 	}
@@ -230,6 +215,65 @@ func tickGame() {
 	}
 }
 
+// Change Position of a node by creating a trail from its previous location.
+// (Predicting a path from a given prev location and new location).
+func updateLocationOfNode(fromCurrent *Node, to *Node) {
+	currentDir := fromCurrent.Direction
+	currentX := fromCurrent.CurrLoc.X
+	currentY := fromCurrent.CurrLoc.Y
+
+	newDir := to.Direction
+	newX := to.CurrLoc.X
+	newY := to.CurrLoc.Y
+
+	empty := ""
+	nodeName := to.Id // p1, p2, etc.
+	nodeTrail := "t" + nodeName[len(nodeName)-1:]
+
+	if currentX == newX && currentY == newY {
+		fromCurrent.Direction = newDir
+	} else {
+		if currentDir == DIRECTION_UP {
+			board[currentY][currentX] = empty
+			i := currentY
+			for i > newY {
+				board[i][currentX] = nodeTrail
+				i--
+			}
+			board[newY][currentX] = nodeName
+			fromCurrent.CurrLoc.Y = newY
+		} else if currentDir == DIRECTION_DOWN {
+			board[currentY][currentX] = empty
+			i := currentY
+			for i < newY {
+				board[i][currentX] = nodeTrail
+				i++
+			}
+			board[newY][currentX] = nodeName
+			fromCurrent.CurrLoc.Y = newY
+		} else if currentDir == DIRECTION_LEFT {
+			board[currentY][currentX] = empty
+			i := currentX
+			for i > newX {
+				board[currentY][i] = nodeTrail
+				i--
+			}
+			board[currentY][newX] = nodeName
+			fromCurrent.CurrLoc.X = newX
+		} else { // DIRECTION_RIGHT
+			board[currentY][currentX] = empty
+			i := currentX
+			for i < newX {
+				board[currentY][i] = nodeTrail
+				i++
+			}
+			board[currentY][newX] = nodeName
+			fromCurrent.CurrLoc.X = newX
+		}
+		fromCurrent.Direction = newDir
+	}
+}
+
 // Check if a node has collided into a trail, wall, or another node.
 func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
 	// Wall boundaries.
@@ -269,7 +313,6 @@ func intervalUpdate() {
 		}
 
 		nodeJson, err := json.Marshal(message)
-		//log.Println("Data to send: " + fmt.Sprintln(message))
 		checkErr(err)
 		sendPacketsToPeers(nodeJson)
 		time.Sleep(intervalUpdateRate)
@@ -326,10 +369,12 @@ func listenUDPPacket() {
 			}
 		}
 
+		// Received a direction change from a peer.
+		// Match the state of peer by predicting its path.
 		if message.IsDirectionChange {
 			for _, n := range nodes {
 				if n.Id == message.Node.Id {
-					n.Direction = message.Node.Direction
+					updateLocationOfNode(n, &message.Node)
 				}
 			}
 		}
@@ -350,7 +395,6 @@ func notifyPeersDirChanged(direction string) {
 		log.Println("Direction for ", nodeId, " has changed from ",
 			prevDirection, " to ", direction)
 		myNode.Direction = direction
-		directions[nodeId] = direction
 
 		msg := &Message{IsDirectionChange: true, Node: *myNode}
 		msgJson, err := json.Marshal(msg)
