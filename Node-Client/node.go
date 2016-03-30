@@ -196,11 +196,15 @@ func tickGame() {
 			}
 
 			if nodeHasCollided(x, y, new_x, new_y) {
-				log.Println("NODE " + node.Id + " IS DEAD")
+				localLog("NODE " + node.Id + " IS DEAD")
 				// We don't update the position to a new value
 				board[y][x] = "d" + strconv.Itoa(playerIndex) // Dead node
 				if node.Id == nodeId && isPlaying {
-					gSO.Emit("playerDead")
+					if gSO != nil {
+						gSO.Emit("playerDead")
+					} else {
+						log.Fatal("Socket object somehow still not set up")
+					}
 					isPlaying = false
 				}
 			} else {
@@ -359,11 +363,11 @@ func listenUDPPacket() {
 		checkErr(err)
 		node = message.Node
 
-		log.Println("Received ", node)
+		localLog("Received ", node)
 		lastCheckin[node.Id] = time.Now()
 
 		if message.IsLeader {
-			log.Println("deadNodes are: ", message.DeadNodes)
+			localLog("deadNodes are: ", message.DeadNodes)
 			for _, n := range message.DeadNodes {
 				removeNodeFromList(n)
 			}
@@ -380,7 +384,7 @@ func listenUDPPacket() {
 		}
 
 		if err != nil {
-			log.Println("Error: ", err)
+			localLog("Error: ", err)
 		}
 
 		time.Sleep(400 * time.Millisecond)
@@ -392,7 +396,7 @@ func notifyPeersDirChanged(direction string) {
 
 	// check if the direction change for node with the id
 	if prevDirection != direction {
-		log.Println("Direction for ", nodeId, " has changed from ",
+		localLog("Direction for ", nodeId, " has changed from ",
 			prevDirection, " to ", direction)
 		myNode.Direction = direction
 
@@ -411,7 +415,6 @@ func hasExceededThreshold(nodeLastCheckin int64) bool {
 	// TODO gotta check the math
 	threshold := nodeLastCheckin + (700 * int64(time.Millisecond/time.Nanosecond))
 	now := time.Now().UnixNano()
-	//log.Println("Threshold ", threshold, "Now ", now)
 	return threshold < now
 }
 
@@ -424,26 +427,26 @@ func handleNodeFailure() {
 	// check if the time it last checked in exceed CHECKIN_INTERVAL
 	for {
 		if isLeader() {
-			log.Println("Im a leader.")
+			localLog("Im a leader.")
 			for _, node := range nodes {
 				if node.Id != nodeId {
 					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
-						log.Println(node.Id, " HAS DIED")
+						localLog(node.Id, " HAS DIED")
 						// TODO tell rest of nodes this node has died
 						// --> leader should periodically send out active nodes in the system
 						// --> so here we just have to remove it from the nodes list.
 						deadNodes = append(deadNodes, node.Id)
-						log.Println(len(deadNodes))
+						localLog(len(deadNodes))
 						removeNodeFromList(node.Id)
 					}
 				}
 			}
 		} else {
-			log.Println("Im a node.")
+			localLog("Im a node.")
 			// Continually check if leader is alive.
 			leaderId := nodes[0].Id
 			if hasExceededThreshold(lastCheckin[leaderId].UnixNano()) {
-				log.Println("LEADER ", leaderId, " HAS DIED.")
+				localLog("LEADER ", leaderId, " HAS DIED.")
 				removeNodeFromList(leaderId)
 				// TODO: remove leader? or ask other peers first?
 			}
@@ -475,7 +478,7 @@ func leaderConflictResolution() {
 // Error checking. Exit program when error occurs.
 func checkErr(err error) {
 	if err != nil {
-		log.Println("error:", err)
+		localLog("error:", err)
 		os.Exit(1)
 	}
 }
