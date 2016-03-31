@@ -31,6 +31,7 @@ type Message struct {
 	IsDeathReport     bool     // is this a death report.
 	DeadNodes         []string // id of dead nodes.
 	Node              Node     // interval update struct.
+	Log               []byte
 }
 
 const (
@@ -318,18 +319,19 @@ func intervalUpdate() {
 			message = &Message{Node: *myNode}
 		}
 
-		nodeJson, err := json.Marshal(message)
-		checkErr(err)
-		sendPacketsToPeers(nodeJson)
+		sendPacketsToPeers(message)
 		time.Sleep(intervalUpdateRate)
 	}
 }
 
-func sendPacketsToPeers(payload []byte) {
+func sendPacketsToPeers(message *Message) {
 	for _, node := range nodes {
 		if node.Id != nodeId {
-			data := send("Sending interval update to "+node.Id+" at ip "+node.Ip, payload)
-			sendUDPPacket(node.Ip, data)
+			log := logSend("Sending interval update to " + node.Id + " at ip " + node.Ip)
+			message.Log = log
+			nodeJson, err := json.Marshal(message)
+			checkErr(err)
+			sendUDPPacket(node.Ip, nodeJson)
 		}
 	}
 }
@@ -357,13 +359,13 @@ func listenUDPPacket() {
 
 	for {
 		n, addr, err := udpConn.ReadFromUDP(buf)
-		msg := receive("Received packet from "+addr.String(), buf, n)
-		data := msg.Payload
 		var message Message
 		var node Node
-		err = json.Unmarshal(data, &message)
+		err = json.Unmarshal(buf[0:n], &message)
 		checkErr(err)
 		node = message.Node
+
+		logReceive("Received packet from "+addr.String(), message.Log)
 
 		localLog("Received ", node)
 		lastCheckin[node.Id] = time.Now()
@@ -418,14 +420,12 @@ func notifyPeersDirChanged(direction string) {
 
 	// check if the direction change for node with the id
 	if prevDirection != direction {
-		localLog("Direction for ", nodeId, " has changed from ",
-			prevDirection, " to ", direction)
+		log := logSend("Direction for " + nodeId + " has changed from " +
+			prevDirection + " to " + direction)
 		myNode.Direction = direction
 
-		msg := &Message{IsDirectionChange: true, Node: *myNode}
-		msgJson, err := json.Marshal(msg)
-		checkErr(err)
-		sendPacketsToPeers(msgJson)
+		msg := &Message{IsDirectionChange: true, Node: *myNode, Log: log}
+		sendPacketsToPeers(msg)
 	}
 }
 
