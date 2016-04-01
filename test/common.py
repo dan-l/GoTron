@@ -72,7 +72,7 @@ class Client(object):
     def _start(self):
         # Our HTML assets are only loaded if we run the binary from the correct
         # cwd.
-        with use_cwd(os.path.dirname(self.bin_path)):
+        with use_cwd(os.path.join(os.path.dirname(_HERE), "Node-Client")):
             subprocess.call([self.bin_path,
                              "localhost:{}".format(self.node_port),
                              "localhost:{}".format(self.node_rpc_port),
