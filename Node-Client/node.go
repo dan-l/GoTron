@@ -367,7 +367,8 @@ func listenUDPPacket() {
 
 		logReceive("Received packet from "+addr.String(), message.Log)
 
-		localLog("Received ", node)
+		localLog("Received: Id:", node.Id, "Ip:", node.Ip, "X:",
+            node.CurrLoc.X, "Y:", node.CurrLoc.Y, "Dir:", node.Direction)
 		lastCheckin[node.Id] = time.Now()
 
 		if message.IsLeader {
@@ -505,15 +506,25 @@ func checkErr(err error) {
 
 // For debugging
 func printBoard() {
+    // TODO: Continous string concat is terrible, but this is OK for just
+    //       debugging for now. Get rid of it at some point in the future.
+    topLine := "  "
+    for i, _ := range board[0] {
+        topLine += fmt.Sprintf("%3d", i)
+    }
+    localLog(topLine, "")
 	for r, _ := range board {
-		fmt.Print("[")
+		// Ideally, we would introduce a localLog() variant that does Print()
+		// instead of Println(). However, Print() on log files seems to always
+		// introduce a new line, which is useless for what we're doing here.
+		line := ""
 		for _, item := range board[r] {
 			if item == "" {
-				fmt.Print("__" + " ")
+				line += "__ "
 			} else {
-				fmt.Print(item + " ")
+				line += (item + " ")
 			}
 		}
-		fmt.Print("]\n")
+		localLog(fmt.Sprintf("%2d", r), line)
 	}
 }
