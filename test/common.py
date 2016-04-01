@@ -31,7 +31,7 @@ class MatchMakingServer(object):
             break
 
         if not self.bin_path:
-            raise Exception("Couldn't find client binary to run")
+            raise Exception("Couldn't find matchmaking binary to run")
 
     def _start(self):
         subprocess.call([self.bin_path, "localhost:{}".format(self.port)])

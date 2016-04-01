@@ -199,48 +199,47 @@ func tickGame() {
 	}
 
 	for {
-		if isPlaying == false {
-			return
-		}
-		for i, node := range nodes {
-			playerIndex := i + 1
-			direction := node.Direction
-			x := node.CurrLoc.X
-			y := node.CurrLoc.Y
-			new_x := node.CurrLoc.X
-			new_y := node.CurrLoc.Y
+		if imAlive && isPlaying {
+			for _, node := range nodes {
+				playerIndex := string(node.Id[len(node.Id)-1])
+				direction := node.Direction
+				x := node.CurrLoc.X
+				y := node.CurrLoc.Y
+				new_x := node.CurrLoc.X
+				new_y := node.CurrLoc.Y
 
-			// Path prediction
-			board[y][x] = "t" + strconv.Itoa(playerIndex) // Change position to be a trail.
-			switch direction {
-			case DIRECTION_UP:
-				new_y = intMax(0, y-1)
-			case DIRECTION_DOWN:
-				new_y = intMin(BOARD_SIZE-1, y+1)
-			case DIRECTION_LEFT:
-				new_x = intMax(0, x-1)
-			case DIRECTION_RIGHT:
-				new_x = intMin(BOARD_SIZE-1, x+1)
-			}
-
-			if nodeHasCollided(x, y, new_x, new_y) {
-				localLog("NODE " + node.Id + " IS DEAD")
-				// We don't update the position to a new value
-				board[y][x] = "d" + strconv.Itoa(playerIndex) // Dead node
-				if node.Id == nodeId && imAlive {
-					imAlive = false
-					if gSO != nil {
-						gSO.Emit("playerDead")
-						reportMySorrowfulDeath()
-					} else {
-						log.Fatal("Socket object somehow still not set up")
-					}
+				// Path prediction
+				board[y][x] = "t" + playerIndex // Change position to be a trail.
+				switch direction {
+				case DIRECTION_UP:
+					new_y = intMax(0, y-1)
+				case DIRECTION_DOWN:
+					new_y = intMin(BOARD_SIZE-1, y+1)
+				case DIRECTION_LEFT:
+					new_x = intMax(0, x-1)
+				case DIRECTION_RIGHT:
+					new_x = intMin(BOARD_SIZE-1, x+1)
 				}
-			} else {
-				// Update player's new position.
-				board[new_y][new_x] = "p" + strconv.Itoa(playerIndex)
-				node.CurrLoc.X = new_x
-				node.CurrLoc.Y = new_y
+
+				if nodeHasCollided(x, y, new_x, new_y) {
+					localLog("NODE " + node.Id + " IS DEAD")
+					// We don't update the position to a new value
+					board[y][x] = "d" + playerIndex // Dead node
+					if node.Id == nodeId && imAlive {
+						imAlive = false
+						if gSO != nil {
+							gSO.Emit("playerDead")
+							reportMySorrowfulDeath()
+						} else {
+							log.Fatal("Socket object somehow still not set up")
+						}
+					}
+				} else {
+					// Update player's new position.
+					board[new_y][new_x] = "p" + playerIndex
+					node.CurrLoc.X = new_x
+					node.CurrLoc.Y = new_y
+				}
 			}
 		}
 
@@ -336,11 +335,10 @@ func renderGame() {
 
 // Update peers with node's current location.
 func intervalUpdate() {
-	if isPlaying == false {
-		return
-	}
-
 	for {
+		if imAlive == false {
+			return
+		}
 		var message *Message
 		if isLeader() {
 			message = &Message{IsLeader: true, DeadNodes: deadNodes, Node: *myNode, History: PeerHistory}
@@ -497,7 +495,7 @@ func handleNodeFailure() {
 			for _, node := range nodes {
 				if node.Id != nodeId {
 					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
-						localLog(node.Id, " HAS DIED")
+						localLog(node.Id, " HAS FAILED")
 						// TODO tell rest of nodes this node has died
 						// --> leader should periodically send out active nodes in the system
 						// --> so here we just have to remove it from the nodes list.
@@ -513,7 +511,7 @@ func handleNodeFailure() {
 			// Continually check if leader is alive.
 			leaderId := nodes[0].Id
 			if hasExceededThreshold(lastCheckin[leaderId].UnixNano()) {
-				localLog("LEADER ", leaderId, " HAS DIED.")
+				localLog("LEADER ", leaderId, " HAS FAILED.")
 				removeNodeFromList(leaderId)
 				// TODO: remove leader? or ask other peers first?
 			}
