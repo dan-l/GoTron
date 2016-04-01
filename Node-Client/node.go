@@ -31,6 +31,7 @@ type Message struct {
 	IsDeathReport     bool     // is this a death report.
 	DeadNodes         []string // id of dead nodes.
 	Node              Node     // interval update struct.
+	Log               []byte
 }
 
 const (
@@ -87,6 +88,10 @@ func main() {
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
 
+	localLog("----INITIAL STATE----")
+	printBoard()
+	localLog("----INITIAL STATE----")
+
 	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
 	go httpServe()
@@ -98,7 +103,7 @@ func init() {
 	directions = map[string]string{
 		"p1": DIRECTION_RIGHT,
 		"p2": DIRECTION_LEFT,
-		"p3": DIRECTION_LEFT,
+		"p3": DIRECTION_RIGHT,
 		"p4": DIRECTION_RIGHT,
 		"p5": DIRECTION_RIGHT,
 		"p6": DIRECTION_LEFT,
@@ -107,14 +112,14 @@ func init() {
 	initialPosition = map[string]*Pos{
 		"p1": &Pos{1, 1},
 		"p2": &Pos{8, 8},
-		"p3": &Pos{8, 1},
-		"p4": &Pos{1, 8},
-		"p5": &Pos{4, 1},
-		"p6": &Pos{5, 8},
+		"p3": &Pos{1, 8},
+		"p4": &Pos{8, 1},
+		"p5": &Pos{1, 4},
+		"p6": &Pos{8, 5},
 	}
 
 	for player, pos := range initialPosition {
-		board[pos.X][pos.Y] = player
+		board[pos.Y][pos.X] = player
 	}
 
 	nodes = make([]*Node, 0)
@@ -324,18 +329,19 @@ func intervalUpdate() {
 			message = &Message{Node: *myNode}
 		}
 
-		nodeJson, err := json.Marshal(message)
-		checkErr(err)
-		sendPacketsToPeers(nodeJson)
+		sendPacketsToPeers(message)
 		time.Sleep(intervalUpdateRate)
 	}
 }
 
-func sendPacketsToPeers(payload []byte) {
+func sendPacketsToPeers(message *Message) {
 	for _, node := range nodes {
 		if node.Id != nodeId {
-			data := send("Sending interval update to "+node.Id+" at ip "+node.Ip, payload)
-			sendUDPPacket(node.Ip, data)
+			log := logSend("Sending interval update to " + node.Id + " at ip " + node.Ip)
+			message.Log = log
+			nodeJson, err := json.Marshal(message)
+			checkErr(err)
+			sendUDPPacket(node.Ip, nodeJson)
 		}
 	}
 }
@@ -363,15 +369,16 @@ func listenUDPPacket() {
 
 	for {
 		n, addr, err := udpConn.ReadFromUDP(buf)
-		msg := receive("Received packet from "+addr.String(), buf, n)
-		data := msg.Payload
 		var message Message
 		var node Node
-		err = json.Unmarshal(data, &message)
+		err = json.Unmarshal(buf[0:n], &message)
 		checkErr(err)
 		node = message.Node
 
-		localLog("Received ", node)
+		logReceive("Received packet from "+addr.String(), message.Log)
+
+		localLog("Received: Id:", node.Id, "Ip:", node.Ip, "X:",
+			node.CurrLoc.X, "Y:", node.CurrLoc.Y, "Dir:", node.Direction)
 		lastCheckin[node.Id] = time.Now()
 
 		if message.IsLeader {
@@ -421,9 +428,7 @@ func listenUDPPacket() {
 // Tell my beloved friends I have died.
 func reportMySorrowfulDeath() {
 	msg := &Message{IsDeathReport: true, Node: *myNode}
-	msgJson, err := json.Marshal(msg)
-	checkErr(err)
-	sendPacketsToPeers(msgJson)
+	sendPacketsToPeers(msg)
 }
 
 func notifyPeersDirChanged(direction string) {
@@ -431,14 +436,12 @@ func notifyPeersDirChanged(direction string) {
 
 	// check if the direction change for node with the id
 	if prevDirection != direction {
-		localLog("Direction for ", nodeId, " has changed from ",
-			prevDirection, " to ", direction)
+		log := logSend("Direction for " + nodeId + " has changed from " +
+			prevDirection + " to " + direction)
 		myNode.Direction = direction
 
-		msg := &Message{IsDirectionChange: true, Node: *myNode}
-		msgJson, err := json.Marshal(msg)
-		checkErr(err)
-		sendPacketsToPeers(msgJson)
+		msg := &Message{IsDirectionChange: true, Node: *myNode, Log: log}
+		sendPacketsToPeers(msg)
 	}
 }
 
@@ -520,15 +523,25 @@ func checkErr(err error) {
 
 // For debugging
 func printBoard() {
+	// TODO: Continous string concat is terrible, but this is OK for just
+	//       debugging for now. Get rid of it at some point in the future.
+	topLine := "  "
+	for i, _ := range board[0] {
+		topLine += fmt.Sprintf("%3d", i)
+	}
+	localLog(topLine, "")
 	for r, _ := range board {
-		fmt.Print("[")
+		// Ideally, we would introduce a localLog() variant that does Print()
+		// instead of Println(). However, Print() on log files seems to always
+		// introduce a new line, which is useless for what we're doing here.
+		line := ""
 		for _, item := range board[r] {
 			if item == "" {
-				fmt.Print("__" + " ")
+				line += "__ "
 			} else {
-				fmt.Print(item + " ")
+				line += (item + " ")
 			}
 		}
-		fmt.Print("]\n")
+		localLog(fmt.Sprintf("%2d", r), line)
 	}
 }

@@ -15,13 +15,13 @@ type Msg struct {
 var Logger *govec.GoLog
 var fileLogger *log.Logger
 
-func initLogging() {
+func initLogging(rpcAddr string) {
 	// Windows doesn't accept colons in paths, so we filter them out here.
-	logFileName := strings.Replace(nodeAddr, ":", "", -1)
-	Logger = govec.Initialize(nodeAddr, logFileName)
+	logFileName := strings.Replace(rpcAddr, ":", "", -1)
+	Logger = govec.Initialize(rpcAddr, logFileName)
 
 	localLogFile, err := os.Create(logFileName + "-local.txt")
-	checkErr(err)
+	CheckError(err, 24)
 	fileLogger = log.New(localLogFile, "", 0)
 }
 

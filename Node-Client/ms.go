@@ -14,11 +14,13 @@ type ValReply struct {
 
 type GameArgs struct {
 	NodeList []*Node
+	Log      []byte
 }
 
 type NodeJoin struct {
 	RpcIp string
 	Ip    string
+	Log   []byte
 }
 
 var nodeRpcAddr string
@@ -28,6 +30,7 @@ var msService *rpc.Client
 // This RPC function is triggered when a game is ready to begin.
 func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
 	nodes = args.NodeList
+	logReceive("Rpc Called Start Game", args.Log)
 	log.Println("Starting game with nodes: " + printNodes())
 	msService.Close()
 	startGame()   // in node.go, call when rpc is working
@@ -46,6 +49,7 @@ func printNodes() string {
 
 // This RPC function serves as a way for the Matchmaking service to send text to this node.
 func (nc *NodeService) Message(args *GameArgs, response *ValReply) error {
+	logReceive("Rpc Called Message", args.Log)
 	log.Println("Received message:" + response.Val)
 	return nil
 }
@@ -74,5 +78,6 @@ func msRpcServce() {
 	checkErr(e)
 
 	var reply *ValReply = &ValReply{Val: ""}
-	_ = msService.Call("Context.Join", &NodeJoin{RpcIp: nodeRpcAddr, Ip: nodeAddr}, reply)
+	log := logSend("Rpc Call Context.Join")
+	_ = msService.Call("Context.Join", &NodeJoin{RpcIp: nodeRpcAddr, Ip: nodeAddr, Log: log}, reply)
 }

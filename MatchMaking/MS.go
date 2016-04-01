@@ -56,15 +56,18 @@ type Node struct {
 type NodeJoin struct {
 	RpcIp string // The one MS has to dial at start Game
 	Ip    string // ip to send to each player
+	Log   []byte
 }
 
 type GameArgs struct {
 	NodeList []*Node // List of peer a node should talk to
+	Log      []byte
 }
 
 // Reply from client
 type ValReply struct {
 	Val string // value; depends on the call
+	Log []byte
 }
 
 // MS node
@@ -128,7 +131,8 @@ func (this *Context) startGame() {
 		var reply *ValReply = &ValReply{Val: ""}
 		//fmt.Println("calling startgame with connections = ", this.connections)
 		//fmt.Println("c is:", this.connections[key])
-		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom}, reply)
+		log := logSend("Rpc Call " + RpcStartGame)
+		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom, Log: log}, reply)
 		if e != nil {
 			fmt.Println("Failed to start", key)
 		}
@@ -155,7 +159,8 @@ func (this *Context) checkConn() {
 		_, exist := this.connections[ClientIp]
 		if exist {
 			var reply *ValReply = &ValReply{Val: ""}
-			e := this.connections[ClientIp].Call(RpcMessage, &GameArgs{NodeList: this.gameRoom}, reply)
+			log := logSend("Rpc Call " + RpcMessage)
+			e := this.connections[ClientIp].Call(RpcMessage, &GameArgs{NodeList: this.gameRoom, Log: log}, reply)
 			if e != nil {
 				fmt.Println(e)
 				fmt.Println("Deleting disconnected node ", ClientIp)
@@ -187,6 +192,7 @@ func (this *Context) checkConn() {
 
 // RPC join called by a client
 func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
+	logReceive("AD: new node:", nodeJoin.Log)
 	AddNode(this, nodeJoin)
 
 	this.checkConn() // Update NodeList and Connections
@@ -292,6 +298,7 @@ func main() {
 	rpcAddr, e := net.ResolveTCPAddr("tcp", os.Args[1])
 	FatalError(e)
 	DebugPrint(1, "Starting MS server")
+	initLogging(rpcAddr.String())
 
 	waitGroup.Add(2)
 
