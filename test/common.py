@@ -53,6 +53,13 @@ class Client(object):
             os.path.join(nc_dir, ".vendor", "bin", "Node-Client"),
             os.path.join(nc_dir, "Node-Client.exe"),
         ]
+
+        env = os.environ
+        if "GOBIN" in env:
+            possible_bin_paths.append(os.path.join(env["GOBIN"], "Node-Client"))
+            possible_bin_paths.append(os.path.join(env["GOBIN"],
+                                                   "Node-Client.exe"))
+
         for possible_bin_path in possible_bin_paths:
             if not os.path.isfile(possible_bin_path):
                 continue
