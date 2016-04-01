@@ -88,6 +88,10 @@ func main() {
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
 
+	localLog("----INITIAL STATE----")
+	printBoard()
+	localLog("----INITIAL STATE----")
+
 	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
 	go httpServe()
@@ -99,7 +103,7 @@ func init() {
 	directions = map[string]string{
 		"p1": DIRECTION_RIGHT,
 		"p2": DIRECTION_LEFT,
-		"p3": DIRECTION_LEFT,
+		"p3": DIRECTION_RIGHT,
 		"p4": DIRECTION_RIGHT,
 		"p5": DIRECTION_RIGHT,
 		"p6": DIRECTION_LEFT,
@@ -108,14 +112,14 @@ func init() {
 	initialPosition = map[string]*Pos{
 		"p1": &Pos{1, 1},
 		"p2": &Pos{8, 8},
-		"p3": &Pos{8, 1},
-		"p4": &Pos{1, 8},
-		"p5": &Pos{4, 1},
-		"p6": &Pos{5, 8},
+		"p3": &Pos{1, 8},
+		"p4": &Pos{8, 1},
+		"p5": &Pos{1, 4},
+		"p6": &Pos{8, 5},
 	}
 
 	for player, pos := range initialPosition {
-		board[pos.X][pos.Y] = player
+		board[pos.Y][pos.X] = player
 	}
 
 	nodes = make([]*Node, 0)
@@ -368,7 +372,7 @@ func listenUDPPacket() {
 		logReceive("Received packet from "+addr.String(), message.Log)
 
 		localLog("Received: Id:", node.Id, "Ip:", node.Ip, "X:",
-            node.CurrLoc.X, "Y:", node.CurrLoc.Y, "Dir:", node.Direction)
+			node.CurrLoc.X, "Y:", node.CurrLoc.Y, "Dir:", node.Direction)
 		lastCheckin[node.Id] = time.Now()
 
 		if message.IsLeader {
@@ -506,13 +510,13 @@ func checkErr(err error) {
 
 // For debugging
 func printBoard() {
-    // TODO: Continous string concat is terrible, but this is OK for just
-    //       debugging for now. Get rid of it at some point in the future.
-    topLine := "  "
-    for i, _ := range board[0] {
-        topLine += fmt.Sprintf("%3d", i)
-    }
-    localLog(topLine, "")
+	// TODO: Continous string concat is terrible, but this is OK for just
+	//       debugging for now. Get rid of it at some point in the future.
+	topLine := "  "
+	for i, _ := range board[0] {
+		topLine += fmt.Sprintf("%3d", i)
+	}
+	localLog(topLine, "")
 	for r, _ := range board {
 		// Ideally, we would introduce a localLog() variant that does Print()
 		// instead of Println(). However, Print() on log files seems to always
