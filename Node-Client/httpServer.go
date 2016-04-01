@@ -15,7 +15,7 @@ type InitialConfig struct {
 
 // Sets up the initial config then returns it once done.
 func setupInitialConfig() InitialConfig {
-	playerID = "p1"
+	playerID = nodeId
 	return InitialConfig{LocalID: playerID}
 }
 
