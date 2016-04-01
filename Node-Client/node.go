@@ -410,9 +410,7 @@ func listenUDPPacket() {
 // Tell my beloved friends I have died.
 func reportMySorrowfulDeath() {
 	msg := &Message{IsDeathReport: true, Node: *myNode}
-	msgJson, err := json.Marshal(msg)
-	checkErr(err)
-	sendPacketsToPeers(msgJson)
+	sendPacketsToPeers(msg)
 }
 
 func notifyPeersDirChanged(direction string) {
