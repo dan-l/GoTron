@@ -54,6 +54,7 @@ var httpServerAddr string // HTTP Server IP.
 var nodes []*Node         // All nodes in the game.
 var myNode *Node          // My node.
 var PeerHistory map[string][]*Pos
+var HistoryLimit int
 var aliveNodes int // Number of alive nodes.
 
 // #LEADER specific.
@@ -129,6 +130,7 @@ func init() {
 	lastCheckin = make(map[string]time.Time)
 	deadNodes = make([]string, 0)
 	tickRate = 500 * time.Millisecond
+	HistoryLimit = 5
 	intervalUpdateRate = 500 * time.Millisecond // TODO we said it's 100 in proposal?
 }
 
@@ -175,6 +177,9 @@ func startGame() {
 func UpdateBoard() {
 	fmt.Println("Updating Board")
 	for id, _ := range PeerHistory {
+		if id == nodeId {
+			continue
+		}
 		buf := []byte(id)
 		playerIndex := string(buf[1])
 		for i, pos := range PeerHistory[id] {
@@ -405,10 +410,16 @@ func listenUDPPacket() {
 			PeerHistory = message.History
 			UpdateBoard()
 		} else if isLeader() {
-			log.Println("LU: Leader packing")
+			localLog("LU: Leader packing")
 			// If I am the leader -> Update PeerHistory with message
-			PeerHistory[message.Node.Id] = append(PeerHistory[message.Node.Id], message.Node.CurrLoc)
-			log.Println("#Move by", message.Node.Id, " is ", len(PeerHistory[message.Node.Id]))
+			if len(PeerHistory[message.Node.Id]) >= HistoryLimit {
+				PeerHistory[message.Node.Id] = PeerHistory[message.Node.Id][1:]
+				PeerHistory[message.Node.Id] = append(PeerHistory[message.Node.Id], message.Node.CurrLoc)
+			} else {
+				PeerHistory[message.Node.Id] = append(PeerHistory[message.Node.Id], message.Node.CurrLoc)
+			}
+
+			localLog("#Move by", message.Node.Id, " is ", len(PeerHistory[message.Node.Id]))
 		}
 
 		if message.IsDeathReport {

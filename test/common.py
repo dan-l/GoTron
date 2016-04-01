@@ -62,8 +62,10 @@ class Client(object):
 
         for possible_bin_path in possible_bin_paths:
             if not os.path.isfile(possible_bin_path):
+                print "client not at " + possible_bin_path
                 continue
             self.bin_path = possible_bin_path
+            print "client is at " + self.bin_path
             break
 
         if not self.bin_path:
