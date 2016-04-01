@@ -38,5 +38,5 @@ func logReceive(msg string, buf []byte) *Msg {
 
 func localLog(v ...interface{}) {
 	log.Println(v)
-	fileLogger.Println(v)
+	fileLogger.Println(time.Now().Format("2006-01-02 15:04:05.000"), v)
 }
