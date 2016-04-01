@@ -178,8 +178,8 @@ func tickGame() {
 		if isPlaying == false {
 			return
 		}
-		for i, node := range nodes {
-			playerIndex := i + 1
+		for _, node := range nodes {
+			playerIndex := string(node.Id[len(node.Id)-1])
 			direction := node.Direction
 			x := node.CurrLoc.X
 			y := node.CurrLoc.Y
@@ -187,7 +187,7 @@ func tickGame() {
 			new_y := node.CurrLoc.Y
 
 			// Path prediction
-			board[y][x] = "t" + strconv.Itoa(playerIndex) // Change position to be a trail.
+			board[y][x] = "t" + playerIndex // Change position to be a trail.
 			switch direction {
 			case DIRECTION_UP:
 				new_y = intMax(0, y-1)
@@ -202,7 +202,7 @@ func tickGame() {
 			if nodeHasCollided(x, y, new_x, new_y) {
 				localLog("NODE " + node.Id + " IS DEAD")
 				// We don't update the position to a new value
-				board[y][x] = "d" + strconv.Itoa(playerIndex) // Dead node
+				board[y][x] = "d" + playerIndex // Dead node
 				if node.Id == nodeId && imAlive {
 					imAlive = false
 					if gSO != nil {
@@ -214,7 +214,7 @@ func tickGame() {
 				}
 			} else {
 				// Update player's new position.
-				board[new_y][new_x] = "p" + strconv.Itoa(playerIndex)
+				board[new_y][new_x] = "p" + playerIndex
 				node.CurrLoc.X = new_x
 				node.CurrLoc.Y = new_y
 			}
