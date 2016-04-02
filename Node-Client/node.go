@@ -318,35 +318,31 @@ func renderGame() {
 func collectLast5Moves() {
 	// Collect the state of nodes on the board as the 'TRUE' state.
 	for _, node := range nodes {
-		if node.Id != nodeId {
+		// Clear the list.
+		gameHistory[node.Id] = make([]*Pos, 0)
 
-			// Clear the list.
-			gameHistory[node.Id] = make([]*Pos, 0)
+		// Put in current location.
+		gameHistory[node.Id] = append(gameHistory[node.Id], node.CurrLoc)
 
-			// Put in current location.
-			gameHistory[node.Id] = append(gameHistory[node.Id], node.CurrLoc)
-
-			i := 1
-			xPos := node.CurrLoc.X
-			yPos := node.CurrLoc.Y
-			trail := "t" + string(node.Id[len(node.Id)-1])
-			for i < 5 {
-				p := findTrail(xPos, yPos, trail, gameHistory[node.Id])
-				if p != nil {
-					gameHistory[node.Id] = append(gameHistory[node.Id], p)
-					xPos = p.X
-					yPos = p.Y
-				} else {
-					break
-				}
-				i++
+		i := 1
+		xPos := node.CurrLoc.X
+		yPos := node.CurrLoc.Y
+		trail := "t" + string(node.Id[len(node.Id)-1])
+		for i < 5 {
+			p := findTrail(xPos, yPos, trail, gameHistory[node.Id])
+			if p != nil {
+				gameHistory[node.Id] = append(gameHistory[node.Id], p)
+				xPos = p.X
+				yPos = p.Y
+			} else {
+				break
 			}
+			i++
+		}
 
-			localLog("History of node ", node.Id)
-			for _, p := range gameHistory[node.Id] {
-				localLog(*p)
-			}
-
+		localLog("History of node ", node.Id)
+		for _, p := range gameHistory[node.Id] {
+			localLog(*p)
 		}
 	}
 }
