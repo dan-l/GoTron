@@ -54,8 +54,9 @@ var httpServerAddr string // HTTP Server IP.
 var nodes []*Node         // All nodes in the game.
 var myNode *Node          // My node.
 var PeerHistory map[string][]*Pos
-var HistoryLimit int
-var aliveNodes int // Number of alive nodes.
+var HistoryLimit int   // Size limit for both nodeHistory and PeerHistory
+var nodeHistory []*Pos // Local Node History
+var aliveNodes int     // Number of alive nodes.
 
 // #LEADER specific.
 var deadNodes []string // id of dead nodes found.
@@ -125,12 +126,13 @@ func init() {
 		board[pos.Y][pos.X] = player
 	}
 
+	nodeHistory = make([]*Pos, 0)
 	nodes = make([]*Node, 0)
 	PeerHistory = make(map[string][]*Pos)
 	lastCheckin = make(map[string]time.Time)
 	deadNodes = make([]string, 0)
 	tickRate = 500 * time.Millisecond
-	HistoryLimit = 5
+	HistoryLimit = 7
 	intervalUpdateRate = 500 * time.Millisecond // TODO we said it's 100 in proposal?
 }
 
@@ -173,22 +175,69 @@ func startGame() {
 	go handleNodeFailure()
 }
 
+// Check if e is in S
+func contains(s []*Pos, e *Pos) bool {
+	for _, a := range s {
+		if a.X == e.X && e.Y == a.Y {
+			localLog("CONTAINS!!!!")
+			return true
+		}
+	}
+	localLog("NOOOO CONTAINS!!!!")
+	return false
+}
+
 // Update the board based on leader's history
 func UpdateBoard() {
 	fmt.Println("Updating Board")
-	for id, _ := range PeerHistory {
-		if id == nodeId {
-			continue
+
+	// Clear any mismatched move in nodeHistory
+	for _, v := range PeerHistory[nodeId] {
+		localLog("FL: PeerH:", *v)
+	}
+
+	for i, pos := range nodeHistory {
+		if len(nodeHistory) > 2 && i == len(nodeHistory)-2 {
+			break
 		}
+
+		if !contains(PeerHistory[nodeId], pos) {
+			board[pos.Y][pos.X] = ""
+		}
+	}
+
+	for id, _ := range PeerHistory {
 		buf := []byte(id)
 		playerIndex := string(buf[1])
+
+		// Apply Leader's History onto the board
 		for i, pos := range PeerHistory[id] {
 			if i == len(PeerHistory[id])-1 {
-				board[pos.Y][pos.X] = "p" + playerIndex
+				if nodeId == id {
+					board[pos.Y][pos.X] = "t" + playerIndex
+				} else {
+					board[pos.Y][pos.X] = "p" + playerIndex
+				}
 			} else {
 				board[pos.Y][pos.X] = "t" + playerIndex
 			}
 		}
+	}
+}
+
+// Store Pos in local node cache
+func LocalCachePos(new_x int, new_y int) {
+	// Keep tract of rendered move
+	newPos := &Pos{X: new_x, Y: new_y}
+	if len(nodeHistory) >= HistoryLimit {
+		nodeHistory = nodeHistory[1:]
+		nodeHistory = append(nodeHistory, newPos)
+	} else {
+		nodeHistory = append(nodeHistory, newPos)
+	}
+
+	for _, e := range nodeHistory {
+		localLog("pos in nodeHistory:", *e)
 	}
 }
 
@@ -240,6 +289,11 @@ func tickGame() {
 					node.CurrLoc.X = new_x
 					node.CurrLoc.Y = new_y
 				}
+
+				// Store my position locally
+				if nodeId == node.Id {
+					LocalCachePos(new_x, new_y)
+				}
 			}
 		}
 
@@ -271,6 +325,7 @@ func updateLocationOfNode(fromCurrent *Node, to *Node) {
 			i := currentY
 			for i > newY {
 				board[i][currentX] = nodeTrail
+				PeerHistory[nodeName] = append(PeerHistory[nodeName], &Pos{X: currentX, Y: i})
 				i--
 			}
 			board[newY][currentX] = nodeName
@@ -280,6 +335,7 @@ func updateLocationOfNode(fromCurrent *Node, to *Node) {
 			i := currentY
 			for i < newY {
 				board[i][currentX] = nodeTrail
+				PeerHistory[nodeName] = append(PeerHistory[nodeName], &Pos{X: currentX, Y: i})
 				i++
 			}
 			board[newY][currentX] = nodeName
@@ -289,6 +345,7 @@ func updateLocationOfNode(fromCurrent *Node, to *Node) {
 			i := currentX
 			for i > newX {
 				board[currentY][i] = nodeTrail
+				PeerHistory[nodeName] = append(PeerHistory[nodeName], &Pos{X: i, Y: currentY})
 				i--
 			}
 			board[currentY][newX] = nodeName
@@ -298,6 +355,7 @@ func updateLocationOfNode(fromCurrent *Node, to *Node) {
 			i := currentX
 			for i < newX {
 				board[currentY][i] = nodeTrail
+				PeerHistory[nodeName] = append(PeerHistory[nodeName], &Pos{X: i, Y: currentY})
 				i++
 			}
 			board[currentY][newX] = nodeName
