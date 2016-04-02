@@ -26,11 +26,12 @@ type Node struct {
 
 // Message to be passed among nodes.
 type Message struct {
-	IsLeader          bool     // is this from the leader.
-	IsDirectionChange bool     // is this a direction change update.
-	IsDeathReport     bool     // is this a death report.
-	DeadNodes         []string // id of dead nodes.
-	Node              Node     // interval update struct.
+	IsLeader          bool                // is this from the leader.
+	IsDirectionChange bool                // is this a direction change update.
+	IsDeathReport     bool                // is this a death report.
+	FailedNodes       []string            // id of disconnected nodes.
+	Node              Node                // interval update struct.
+	GameHistory       map[string]([]*Pos) // history of at most 5 ticks
 	Log               []byte
 }
 
@@ -55,7 +56,8 @@ var myNode *Node          // My node.
 var aliveNodes int        // Number of alive nodes.
 
 // #LEADER specific.
-var deadNodes []string // id of dead nodes found.
+var failedNodes []string          // id of failed nodes found.
+var gameHistory map[string][]*Pos // Last five moves of every node in the game. Written ONLY by the leader.
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
@@ -63,6 +65,7 @@ var waitGroup sync.WaitGroup // For internal processes.
 // Game timers in milliseconds.
 var intervalUpdateRate time.Duration
 var tickRate time.Duration
+var enforceGameStateRate time.Duration
 
 var board [BOARD_SIZE][BOARD_SIZE]string
 var directions map[string]string
@@ -104,7 +107,7 @@ func init() {
 		"p1": DIRECTION_RIGHT,
 		"p2": DIRECTION_LEFT,
 		"p3": DIRECTION_RIGHT,
-		"p4": DIRECTION_RIGHT,
+		"p4": DIRECTION_LEFT,
 		"p5": DIRECTION_RIGHT,
 		"p6": DIRECTION_LEFT,
 	}
@@ -123,10 +126,12 @@ func init() {
 	}
 
 	nodes = make([]*Node, 0)
+	gameHistory = make(map[string][]*Pos)
 	lastCheckin = make(map[string]time.Time)
-	deadNodes = make([]string, 0)
+	failedNodes = make([]string, 0)
 	tickRate = 500 * time.Millisecond
-	intervalUpdateRate = 500 * time.Millisecond // TODO we said it's 100 in proposal?
+	intervalUpdateRate = 1000 * time.Millisecond // TODO we said it's 100 in proposal?
+	enforceGameStateRate = 2000 * time.Millisecond
 }
 
 func intMax(a int, b int) int {
@@ -167,6 +172,7 @@ func startGame() {
 	go GameStateUpdate()
 	go tickGame()
 	go handleNodeFailure()
+	go enforceGameState()
 }
 
 // Leade's Role: Leader notify other peers
@@ -303,14 +309,87 @@ func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
 
 // Renders the game.
 func renderGame() {
+	if isLeader() {
+		go collectLast5Moves()
+	}
 	printBoard()
-	// TODO: This is a disgusting, terrible hack to allow the Node layer to
-	//       broadcast state updates. We should replace this with something
-	//       that's actually reasonable.
 	if gSO != nil {
 		gSO.Emit("gameStateUpdate", board)
 	} else {
 		log.Println("gSO is null though")
+	}
+}
+
+// LEADER: Build a history of last 5 moves for node on the board.
+func collectLast5Moves() {
+	// Collect the state of nodes on the board as the 'TRUE' state.
+	for _, node := range nodes {
+		// Clear the list.
+		gameHistory[node.Id] = make([]*Pos, 0)
+
+		// Put in current location.
+		gameHistory[node.Id] = append(gameHistory[node.Id], node.CurrLoc)
+
+		i := 1
+		xPos := node.CurrLoc.X
+		yPos := node.CurrLoc.Y
+		trail := "t" + string(node.Id[len(node.Id)-1])
+		for i < 5 {
+			p := findTrail(xPos, yPos, trail, gameHistory[node.Id])
+			if p != nil {
+				gameHistory[node.Id] = append(gameHistory[node.Id], p)
+				xPos = p.X
+				yPos = p.Y
+			} else {
+				break
+			}
+			i++
+		}
+
+		localLog("History of node ", node.Id)
+		for _, p := range gameHistory[node.Id] {
+			localLog(*p)
+		}
+	}
+}
+
+// Find the next unvisited trail around the x, y position on the board.
+// Return nil if trail cannot be found.
+func findTrail(x int, y int, trail string, visited []*Pos) *Pos {
+	if y > 0 && board[y-1][x] == trail && !contains(x, y-1, visited) {
+		return &Pos{X: x, Y: y - 1}
+	} else if y < BOARD_SIZE && board[y+1][x] == trail && !contains(x, y+1, visited) {
+		return &Pos{X: x, Y: y + 1}
+	} else if x > 0 && board[y][x-1] == trail && !contains(x-1, y, visited) {
+		return &Pos{X: x - 1, Y: y}
+	} else if x < BOARD_SIZE && board[y][x+1] == trail && !contains(x+1, y, visited) {
+		return &Pos{X: x + 1, Y: y}
+	} else {
+		return nil
+	}
+}
+
+// Check if x y is a position already in the list.
+func contains(x int, y int, list []*Pos) bool {
+	for _, p := range list {
+		if p.X == x && p.Y == y {
+			return true
+		}
+	}
+	return false
+}
+
+// LEADER: Send game history of at most 5 previous ticks to all nodes.
+func enforceGameState() {
+	for {
+		time.Sleep(enforceGameStateRate)
+		if !isLeader() {
+			return
+		} else {
+			// message := &Message{IsLeader: true, GameHistory: gameHistory, Node: *myNode}
+			// sendPacketsToPeers(message)
+		}
+
 	}
 }
 
@@ -322,7 +401,7 @@ func intervalUpdate() {
 		}
 		var message *Message
 		if isLeader() {
-			message = &Message{IsLeader: true, DeadNodes: deadNodes, Node: *myNode}
+			message = &Message{IsLeader: true, FailedNodes: failedNodes, Node: *myNode}
 		} else {
 			message = &Message{Node: *myNode}
 		}
@@ -374,15 +453,17 @@ func listenUDPPacket() {
 		node = message.Node
 
 		logReceive("Received packet from "+addr.String(), message.Log)
-
 		localLog("Received: Id:", node.Id, "Ip:", node.Ip, "X:",
 			node.CurrLoc.X, "Y:", node.CurrLoc.Y, "Dir:", node.Direction)
 		lastCheckin[node.Id] = time.Now()
 
 		if message.IsLeader {
-			localLog("deadNodes are: ", message.DeadNodes)
-			for _, n := range message.DeadNodes {
-				removeNodeFromList(n)
+			// FailedNodes communication.
+			if message.FailedNodes != nil {
+				localLog("failedNodes are: ", message.FailedNodes)
+				for _, n := range message.FailedNodes {
+					removeNodeFromList(n)
+				}
 			}
 
 			// Construct history of each node based on the incoming message
@@ -448,8 +529,8 @@ func isLeader() bool {
 }
 
 func hasExceededThreshold(nodeLastCheckin int64) bool {
-	// TODO gotta check the math
-	threshold := nodeLastCheckin + (700 * int64(time.Millisecond/time.Nanosecond))
+	// TODO gotta check the math : fix incoming.
+	threshold := nodeLastCheckin + (7000 * int64(time.Millisecond/time.Nanosecond))
 	now := time.Now().UnixNano()
 	return threshold < now
 }
@@ -471,8 +552,8 @@ func handleNodeFailure() {
 						// TODO tell rest of nodes this node has died
 						// --> leader should periodically send out active nodes in the system
 						// --> so here we just have to remove it from the nodes list.
-						deadNodes = append(deadNodes, node.Id)
-						localLog(len(deadNodes))
+						failedNodes = append(failedNodes, node.Id)
+						localLog(len(failedNodes))
 						removeNodeFromList(node.Id)
 					}
 				}
