@@ -33,7 +33,6 @@ type Message struct {
 	Node              Node                // interval update struct.
 	GameHistory       map[string]([]*Pos) // history of at most 5 ticks
 	Log               []byte
-	History           map[string][]*Pos // Id to a list of locations
 }
 
 const (
@@ -264,22 +263,22 @@ func tickGame() {
 					node.CurrLoc.Y = new_y
 				}
 
-				// Store my position locally
-				if len(nodeHistory[node.Id]) >= HistoryLimit {
-					nodeHistory[node.Id] = nodeHistory[node.Id][1:]
-					nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
-				} else {
-					nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
-				}
-
-				for k, v := range nodeHistory {
-					localLog(k, "with len", len(v))
-					for _, e := range v {
-						localLog(k, "has ", *e)
-					}
-				}
+				// // Store my position locally
+				// if len(nodeHistory[node.Id]) >= HistoryLimit {
+				// 	nodeHistory[node.Id] = nodeHistory[node.Id][1:]
+				// 	nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
+				// } else {
+				// 	nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
+				// }
 			}
 		}
+
+		// for k, v := range nodeHistory {
+		// 	localLog(k, "with len", len(v))
+		// 	for _, e := range v {
+		// 		localLog(k, "has ", *e)
+		// 	}
+		// }
 
 		renderGame()
 		time.Sleep(tickRate)
@@ -362,12 +361,49 @@ func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
 func renderGame() {
 	if isLeader() {
 		go collectLast5Moves()
+	} else {
+		// Only non-leader nodes have to do this
+		go cacheLocation()
 	}
+
 	printBoard()
 	if gSO != nil {
 		gSO.Emit("gameStateUpdate", board)
 	} else {
 		log.Println("gSO is null though")
+	}
+}
+
+// NON-LEADER: Build a history of last 5 moves for node on the board.
+func cacheLocation() {
+	// Collect the state of nodes on the board as the 'TRUE' state.
+	for _, node := range nodes {
+		// Clear the list.
+		nodeHistory[node.Id] = make([]*Pos, 0)
+
+		// Put in current location.
+		nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
+
+		i := 1
+		xPos := node.CurrLoc.X
+		yPos := node.CurrLoc.Y
+		trail := "t" + string(node.Id[len(node.Id)-1])
+		for i < 5 {
+			p := findTrail(xPos, yPos, trail, nodeHistory[node.Id])
+			if p != nil {
+				nodeHistory[node.Id] = append(nodeHistory[node.Id], p)
+				xPos = p.X
+				yPos = p.Y
+			} else {
+				break
+			}
+			i++
+		}
+
+		localLog("Cache of node ", node.Id, "with len", len(nodeHistory[node.Id]))
+		for _, p := range nodeHistory[node.Id] {
+			localLog(*p)
+		}
 	}
 }
 
@@ -397,7 +433,7 @@ func collectLast5Moves() {
 			i++
 		}
 
-		localLog("History of node ", node.Id)
+		localLog("History of node ", node.Id, "with len", len(gameHistory[node.Id]))
 		for _, p := range gameHistory[node.Id] {
 			localLog(*p)
 		}
@@ -518,7 +554,7 @@ func listenUDPPacket() {
 			}
 
 			// Cache history info from the leader
-			//gameHistory = message.History
+			gameHistory = message.GameHistory
 			//UpdateBoard()
 		}
 
