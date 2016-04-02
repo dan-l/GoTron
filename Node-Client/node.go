@@ -132,6 +132,7 @@ func init() {
 	nodeHistory = make(map[string][]*Pos)
 	nodes = make([]*Node, 0)
 
+	HistoryLimit = 5
 	gameHistory = make(map[string][]*Pos)
 	lastCheckin = make(map[string]time.Time)
 	failedNodes = make([]string, 0)
@@ -220,7 +221,6 @@ func tickGame() {
 	if isPlaying == false {
 		return
 	}
-
 	for {
 		if imAlive && isPlaying {
 			for _, node := range nodes {
@@ -271,8 +271,13 @@ func tickGame() {
 				} else {
 					nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
 				}
-				localLog("nodeHist:", nodeHistory)
 
+				for k, v := range nodeHistory {
+					localLog(k, "with len", len(v))
+					for _, e := range v {
+						localLog(k, "has ", *e)
+					}
+				}
 			}
 		}
 
