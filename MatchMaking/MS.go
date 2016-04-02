@@ -195,17 +195,17 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	logReceive("AD: new node:", nodeJoin.Log)
 	AddNode(this, nodeJoin)
 
-	this.checkConn() // Update NodeList and Connections
+	//this.checkConn() // Update NodeList and Connections
 
 	// Check if the room is full
-	if len(this.nodeList) >= this.roomLimit {
-		this.NodeLock.Lock()
-		fmt.Println("Join: Starting Game")
-		this.makeGameRoom()
-		this.assignID()
-		this.startGame()
-		this.NodeLock.Unlock()
-	}
+	//if len(this.nodeList) >= this.roomLimit {
+	//this.NodeLock.Lock()
+	//fmt.Println("Join: Starting Game")
+	//this.makeGameRoom()
+	//this.assignID()
+	//this.startGame()
+	//this.NodeLock.Unlock()
+	//}
 	return nil
 }
 
