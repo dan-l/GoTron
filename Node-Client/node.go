@@ -221,10 +221,15 @@ func UpdateBoard() {
 
 // Each tick of the game
 func tickGame() {
-	if isPlaying == false {
-		return
-	}
 	for {
+		// Always emit game state updates to ensure that the JS side renders the
+		// most recent and correct state.
+		if gSO != nil {
+			gSO.Emit("gameStateUpdate", board)
+		}
+		if !isPlaying {
+			continue
+		}
 		if imAlive && isPlaying {
 			for _, node := range nodes {
 				playerIndex := string(node.Id[len(node.Id)-1])

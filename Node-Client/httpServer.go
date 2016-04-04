@@ -26,9 +26,6 @@ func startGameUI() {
 
 			notifyPeersDirChanged(direction)
 		})
-		gSO.On("disconnection", func() {
-			log.Println("on disconnect")
-		})
 
 		// Start the game.
 		gSO.Emit("startGame", nil)
@@ -39,16 +36,20 @@ func httpServe() {
 	defer waitGroup.Done()
 	server, err := socketio.NewServer(nil)
 	if err != nil {
+		localLog("ERROR: Fatal socketio.NewServer() error:", err)
 		log.Fatal(err)
 	}
 	// TODO: For some weird reason, "connection" is invoked many times when there are multiple browser windows all pointing to the same localhost UI port, causing the UI to not start properly. A dumb fix for this is to only allow ONE connection.
 	server.SetMaxConnection(1)
 	server.On("connection", func(so socketio.Socket) {
-		log.Println("on connection")
+		localLog("on connection")
 		gSO = so
 	})
 	server.On("error", func(so socketio.Socket, err error) {
-		log.Println("error:", err)
+		localLog("ERROR:", err)
+	})
+	server.On("disconnection", func() {
+		localLog("on disconnect")
 	})
 
 	http.Handle("/socket.io/", server)
