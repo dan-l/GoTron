@@ -36,8 +36,6 @@ const gSocket = io();
 // perform interactions such as resizing objects.
 const gCanvas = new fabric.StaticCanvas("mainCanvas");
 
-let gPlayerID;
-
 function handleKeyPress(event) {
   switch (event.keyCode) {
     case 87: // 'w'
@@ -97,10 +95,6 @@ function handleGameStateUpdate(state) {
     throw new Error("Passed game state that isn't an array");
   }
 
-  if (!gPlayerID) {
-    throw new Error("User ID not set")
-  }
-
   // For now, we want to throw away the existing canvas and repaint everything
   // whenever we get an update. All of this is pretty inefficient, but probably
   // serves the requirements of this project well enough.
@@ -152,20 +146,6 @@ function handleGameStateUpdate(state) {
 }
 
 /**
- * Sets up variables etc with the given initial config.
- *
- * @param {Object} initialConfig
- *        An InitialConfig object as defined in httpServer.go.
- */
-function handleInitialConfig(initialConfig) {
-  if (!objContainsProps(initialConfig, ["LocalID"])) {
-    throw new Error("Got invalid initial config");
-  }
-
-  gPlayerID = initialConfig.LocalID;
-}
-
-/**
  * Starts the game when we are paired with enough players.
  */
 function startGame() {
@@ -194,7 +174,6 @@ function onPlayerVictory() {
 
 function main() {
   // Register handlers.
-  gSocket.on("initialConfig", handleInitialConfig);
   gSocket.on("startGame", startGame);
 }
 

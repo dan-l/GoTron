@@ -9,16 +9,6 @@ import (
 
 var playerID string
 
-type InitialConfig struct {
-	LocalID string // The ID of the local node ("p1", "p2" etc).
-}
-
-// Sets up the initial config then returns it once done.
-func setupInitialConfig() InitialConfig {
-	playerID = nodeId
-	return InitialConfig{LocalID: playerID}
-}
-
 // TODO: This is a disgusting, terrible hack to allow the Node layer to
 //       broadcast state updates. We should replace this with something that's
 //       actually reasonable.
@@ -27,7 +17,6 @@ var gSO socketio.Socket
 // Starts the UI game screen.
 func startGameUI() {
 	if gSO != nil {
-		gSO.Emit("initialConfig", setupInitialConfig())
 		gSO.On("playerMove", func(playerMove map[string]string) {
 			direction, ok := playerMove["direction"]
 			if !ok {
