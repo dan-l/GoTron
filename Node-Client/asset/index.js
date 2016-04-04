@@ -84,6 +84,15 @@ function objContainsProps(obj, expectedProps) {
   return true;
 }
 
+function hideIntroScreen() {
+  let introElem = document.getElementById("intro");
+  if (!introElem) {
+    throw new Error("'intro' element somehow not present");
+  }
+
+  introElem.style.display = "none";
+}
+
 /**
  * Renders to the canvas a representation of the given game state.
  *
@@ -94,6 +103,10 @@ function handleGameStateUpdate(state) {
   if (!(state instanceof Array)) {
     throw new Error("Passed game state that isn't an array");
   }
+
+  // If for some reason we haven't hidden the intro screen by now, force it to
+  // do so.
+  hideIntroScreen();
 
   // For now, we want to throw away the existing canvas and repaint everything
   // whenever we get an update. All of this is pretty inefficient, but probably
@@ -149,11 +162,11 @@ function handleGameStateUpdate(state) {
  * Starts the game when we are paired with enough players.
  */
 function startGame() {
-   gSocket.on("gameStateUpdate", handleGameStateUpdate);
-   gSocket.on("playerDead", onPlayerDeath);
-   gSocket.on("victory", onPlayerVictory);
-   window.onkeydown = handleKeyPress;
-   document.getElementById('intro').style.display = 'none';
+  gSocket.on("gameStateUpdate", handleGameStateUpdate);
+  gSocket.on("playerDead", onPlayerDeath);
+  gSocket.on("victory", onPlayerVictory);
+  window.onkeydown = handleKeyPress;
+  hideIntroScreen();
 }
 
 /**
