@@ -29,6 +29,7 @@ def main():
                                node_rpc_port=node_rpc_port,
                                ms_port=ms_srv_port,
                                http_srv_port=http_srv_port)
+        time.sleep(1)
         client.start()
 
     return "test"

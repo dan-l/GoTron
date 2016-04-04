@@ -184,27 +184,31 @@ func startGame() {
 func UpdateBoard() {
 	fmt.Println("Updating Board")
 
-	// Clear any mismatched move in nodeHistory
-	for _, v := range gameHistory[nodeId] {
-		localLog("FL: PeerH:", *v)
+	// Clear everything on the board except our head
+	for id, v := range nodeHistory {
+		for i, e := range v {
+			if i != len(v)-1 {
+				if i != 0 || nodeId != id {
+					board[e.Y][e.X] = ""
+				}
+			}
+		}
 	}
-
-	// for i, pos := range nodeHistory {
-	// 	if len(nodeHistory) > 2 && i == len(nodeHistory)-2 {
-	// 		break
-	// 	}
-
-	// }
-
+	// Color board based on Leader's hitory
 	for id, _ := range gameHistory {
 		buf := []byte(id)
 		playerIndex := string(buf[1])
 
 		// Apply Leader's History onto the board
 		for i, pos := range gameHistory[id] {
-			if i == len(gameHistory[id])-1 {
+			if i == 0 {
+				// Check if History's head is the same as our head
 				if nodeId == id {
-					board[pos.Y][pos.X] = "t" + playerIndex
+					if myNode.CurrLoc.X == pos.X && myNode.CurrLoc.Y == pos.Y {
+						board[pos.Y][pos.X] = "p" + playerIndex
+					} else {
+						board[pos.Y][pos.X] = "t" + playerIndex
+					}
 				} else {
 					board[pos.Y][pos.X] = "p" + playerIndex
 				}
@@ -473,8 +477,8 @@ func enforceGameState() {
 		if !isLeader() {
 			return
 		} else {
-			// message := &Message{IsLeader: true, GameHistory: gameHistory, Node: *myNode}
-			// sendPacketsToPeers(message)
+			message := &Message{IsLeader: true, GameHistory: gameHistory, Node: *myNode}
+			sendPacketsToPeers(message)
 		}
 
 	}
@@ -553,9 +557,12 @@ func listenUDPPacket() {
 				}
 			}
 
-			// Cache history info from the leader
-			gameHistory = message.GameHistory
-			//UpdateBoard()
+			// Check if message.History exist
+			if message.GameHistory != nil {
+				// Cache history info from the leader
+				gameHistory = message.GameHistory
+				UpdateBoard()
+			}
 		}
 
 		if message.IsDeathReport {
