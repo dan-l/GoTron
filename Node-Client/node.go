@@ -22,6 +22,7 @@ type Node struct {
 	Ip        string // udp port this node is listening to
 	CurrLoc   *Pos
 	Direction string
+	IsAlive   bool
 }
 
 // Message to be passed among nodes.
@@ -30,7 +31,7 @@ type Message struct {
 	IsDirectionChange bool                // is this a direction change update.
 	IsDeathReport     bool                // is this a death report.
 	FailedNodes       []string            // id of disconnected nodes.
-	Node              Node                // interval update struct.
+	Node              Node                // interval update struct node or dead node.
 	GameHistory       map[string]([]*Pos) // history of at most 5 ticks
 	Log               []byte
 }
@@ -159,6 +160,7 @@ func startGame() {
 	for i, node := range nodes {
 		node.CurrLoc = initialPosition[node.Id]
 		node.Direction = directions[node.Id]
+		node.IsAlive = true
 		if node.Ip == nodeAddr {
 			myNode = node
 			nodeId = node.Id
@@ -205,12 +207,12 @@ func UpdateBoard() {
 				// Check if History's head is the same as our head
 				if nodeId == id {
 					if myNode.CurrLoc.X == pos.X && myNode.CurrLoc.Y == pos.Y {
-						board[pos.Y][pos.X] = "p" + playerIndex
+						board[pos.Y][pos.X] = getPlayerState(id)
 					} else {
 						board[pos.Y][pos.X] = "t" + playerIndex
 					}
 				} else {
-					board[pos.Y][pos.X] = "p" + playerIndex
+					board[pos.Y][pos.X] = getPlayerState(id)
 				}
 			} else {
 				board[pos.Y][pos.X] = "t" + playerIndex
@@ -224,9 +226,17 @@ func tickGame() {
 	if isPlaying == false {
 		return
 	}
+
 	for {
 		if imAlive && isPlaying {
 			for _, node := range nodes {
+
+				if node.IsAlive == false {
+					// Not going to path predict since the node is already dead.
+					board[node.CurrLoc.Y][node.CurrLoc.X] = getPlayerState(node.Id)
+					continue
+				}
+
 				playerIndex := string(node.Id[len(node.Id)-1])
 				direction := node.Direction
 				x := node.CurrLoc.X
@@ -248,42 +258,22 @@ func tickGame() {
 				}
 
 				if nodeHasCollided(x, y, new_x, new_y) {
-					localLog("NODE " + node.Id + " IS DEAD")
 					// We don't update the position to a new value
-					board[y][x] = "d" + playerIndex // Dead node
-					if node.Id == nodeId && imAlive {
-						imAlive = false
-						if gSO != nil {
-							gSO.Emit("playerDead")
-							reportMySorrowfulDeath()
-						} else {
-							log.Fatal("Socket object somehow still not set up")
-						}
+					board[y][x] = getPlayerState(node.Id)
+
+					// If leader we tell peers who the dead node is.
+					if isLeader() && node.IsAlive {
+						node.IsAlive = false
+						reportASorrowfulDeath(node)
 					}
 				} else {
 					// Update player's new position.
-					board[new_y][new_x] = "p" + playerIndex
+					board[new_y][new_x] = getPlayerState(node.Id)
 					node.CurrLoc.X = new_x
 					node.CurrLoc.Y = new_y
 				}
-
-				// // Store my position locally
-				// if len(nodeHistory[node.Id]) >= HistoryLimit {
-				// 	nodeHistory[node.Id] = nodeHistory[node.Id][1:]
-				// 	nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
-				// } else {
-				// 	nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
-				// }
 			}
 		}
-
-		// for k, v := range nodeHistory {
-		// 	localLog(k, "with len", len(v))
-		// 	for _, e := range v {
-		// 		localLog(k, "has ", *e)
-		// 	}
-		// }
-
 		renderGame()
 		time.Sleep(tickRate)
 	}
@@ -566,14 +556,25 @@ func listenUDPPacket() {
 		}
 
 		if message.IsDeathReport {
-			aliveNodes = aliveNodes - 1
-			log.Println("**** DEATH REPORT *** size is now ", strconv.Itoa(aliveNodes))
-			if aliveNodes == 1 {
-				// Oh wow, I'm the only one alive!
-				if gSO != nil {
-					gSO.Emit("victory")
-					isPlaying = false
+			for _, n := range nodes {
+				if n.Id == message.Node.Id {
+					n.IsAlive = false
+					aliveNodes = aliveNodes - 1
 				}
+			}
+
+			// If the dead node is me, tell the front end.
+			if message.Node.Id == nodeId && gSO != nil {
+				localLog("IM DEAD REPORTING TO FRONT END")
+				gSO.Emit("playerDead")
+				return
+			}
+
+			// Otherwise, check if I'm the last node standing.
+			if myNode.IsAlive && aliveNodes == 1 && gSO != nil {
+				localLog("I WIN")
+				gSO.Emit("playerVictory")
+				return
 			}
 		}
 
@@ -595,9 +596,9 @@ func listenUDPPacket() {
 	}
 }
 
-// Tell my beloved friends I have died.
-func reportMySorrowfulDeath() {
-	msg := &Message{IsDeathReport: true, Node: *myNode}
+// LEADER: Tell nodes someone has died.
+func reportASorrowfulDeath(node *Node) {
+	msg := &Message{IsDeathReport: true, Node: *node}
 	sendPacketsToPeers(msg)
 }
 
@@ -631,7 +632,6 @@ func handleNodeFailure() {
 		return
 	}
 
-	// only for regular node
 	// check if the time it last checked in exceed CHECKIN_INTERVAL
 	for {
 		if isLeader() {
@@ -641,7 +641,6 @@ func handleNodeFailure() {
 				if node.Id != nodeId {
 					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
 						localLog(node.Id, " HAS FAILED")
-						// TODO tell rest of nodes this node has died
 						// --> leader should periodically send out active nodes in the system
 						// --> so here we just have to remove it from the nodes list.
 						failedNodes = append(failedNodes, node.Id)
@@ -658,7 +657,6 @@ func handleNodeFailure() {
 			if hasExceededThreshold(lastCheckin[leaderId].UnixNano()) {
 				localLog("LEADER ", leaderId, " HAS FAILED.")
 				removeNodeFromList(leaderId)
-				// TODO: remove leader? or ask other peers first?
 			}
 		}
 		time.Sleep(intervalUpdateRate)
@@ -666,7 +664,6 @@ func handleNodeFailure() {
 }
 
 // LEADER: removes a dead node from the node list.
-// TODO: Have to confirm if this works.
 func removeNodeFromList(id string) {
 	i := 0
 	for i < len(nodes) {
@@ -679,10 +676,20 @@ func removeNodeFromList(id string) {
 	}
 }
 
-func leaderConflictResolution() {
-	// as the referee of the game,
-	// broadcast your game state for the current window to all peers
-	// call sendUDPPacket
+// Given a node id string, return "p_" or "d_" depending on whether the player is alive.
+func getPlayerState(id string) string {
+	for _, n := range nodes {
+		if n.Id == id {
+			buf := []byte(id)
+			playerIndex := string(buf[1])
+			if n.IsAlive {
+				return "p" + playerIndex
+			} else {
+				return "d" + playerIndex
+			}
+		}
+	}
+	return ""
 }
 
 // Error checking. Exit program when error occurs.
