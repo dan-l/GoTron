@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+import argparse
 import os
 import subprocess
 import sys
@@ -19,19 +20,30 @@ class BuildStage(object):
         return subprocess.call(self.command_and_args)
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--use-go-build", dest="use_go_build",
+                        action="store_true")
+    args = parser.parse_args()
+
     stages = [
         BuildStage("MS Server",
                    os.path.join(_GOTRON_DIR, "MatchMaking"),
                    ["go", "build", "MS.go", "log.go"]),
-        BuildStage("Node Client",
-                   os.path.join(_GOTRON_DIR, "Node-Client"),
-                   ["go", "build"]),
     ]
+
+    if args.use_go_build:
+        stages.append(BuildStage("Node Client (go build)",
+                                 os.path.join(_GOTRON_DIR, "Node-Client"),
+                                 ["go", "build"]))
+    else:
+        stages.append(BuildStage("Node Client (gopm)",
+                                 os.path.join(_GOTRON_DIR, "Node-Client"),
+                                 ["gopm", "install"]))
 
     for stage in stages:
         exit_code = stage.run()
         if exit_code != 0:
-            return "Stage '{}' failed".format(name)
+            return "Stage '{}' failed".format(stage.name)
 
     print "Successfully executed all build stages"
     return None
