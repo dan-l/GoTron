@@ -162,9 +162,6 @@ function handleGameStateUpdate(state) {
  * Starts the game when we are paired with enough players.
  */
 function startGame() {
-  gSocket.on("gameStateUpdate", handleGameStateUpdate);
-  gSocket.on("playerDead", onPlayerDeath);
-  gSocket.on("victory", onPlayerVictory);
   window.onkeydown = handleKeyPress;
   hideIntroScreen();
 }
@@ -188,6 +185,9 @@ function onPlayerVictory() {
 function main() {
   // Register handlers.
   gSocket.on("startGame", startGame);
+  gSocket.on("gameStateUpdate", handleGameStateUpdate);
+  gSocket.on("playerDead", onPlayerDeath);
+  gSocket.on("victory", onPlayerVictory);
 }
 
 main();
