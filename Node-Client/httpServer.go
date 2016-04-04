@@ -55,7 +55,7 @@ func httpServe() {
 	// TODO: For some weird reason, "connection" is invoked many times when there are multiple browser windows all pointing to the same localhost UI port, causing the UI to not start properly. A dumb fix for this is to only allow ONE connection.
 	server.SetMaxConnection(1)
 	server.On("connection", func(so socketio.Socket) {
-		log.Println("on connection")
+		localLog("on connection")
 		gSO = so
 	})
 	server.On("error", func(so socketio.Socket, err error) {

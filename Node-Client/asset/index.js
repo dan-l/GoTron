@@ -93,6 +93,7 @@ function objContainsProps(obj, expectedProps) {
  *        A "board" object as defined in node.go.
  */
 function handleGameStateUpdate(state) {
+  console.log('onGameStateUpdate')
   if (!(state instanceof Array)) {
     throw new Error("Passed game state that isn't an array");
   }
@@ -169,9 +170,10 @@ function handleInitialConfig(initialConfig) {
  * Starts the game when we are paired with enough players.
  */
 function startGame() {
+   console.log('startGame')
    gSocket.on("gameStateUpdate", handleGameStateUpdate);
    gSocket.on("playerDead", onPlayerDeath);
-   gSocket.on("victory", onPlayerVictory);
+   gSocket.on("playerVictory", onPlayerVictory);
    window.onkeydown = handleKeyPress;
    document.getElementById('intro').style.display = 'none';
 }
@@ -181,6 +183,7 @@ function startGame() {
  */
 function onPlayerDeath() {
     window.onkeydown = null;
+    console.log('onPlayerDeath')
     document.getElementById('message').innerHTML = '<h3 style="color:red">You are dead!</h3>';
 }
 
@@ -189,10 +192,12 @@ function onPlayerDeath() {
  */
 function onPlayerVictory() {
      window.onkeydown = null;
+     console.log('onPlayerVictory')
      document.getElementById('message').innerHTML = '<h3 style="color:red"><marquee>YOU WIN!</h3>';
 }
 
 function main() {
+  console.log('main')
   // Register handlers.
   gSocket.on("initialConfig", handleInitialConfig);
   gSocket.on("startGame", startGame);
