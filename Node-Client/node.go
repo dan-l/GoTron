@@ -271,8 +271,11 @@ func tickGame() {
 					} else if isLeader() && node.IsAlive {
 						// If leader we tell peers who the dead node is.
 						node.IsAlive = false
+						aliveNodes = aliveNodes - 1
 						localLog("Leader sending death report ", node.Id)
 						reportASorrowfulDeathToPeers(node)
+						// Otherwise, check if I'm the last node standing.
+						haveIWon()
 					}
 				} else {
 					// Update player's new position.
@@ -583,11 +586,7 @@ func listenUDPPacket() {
 				return
 			}
 
-			// Otherwise, check if I'm the last node standing.
-			if myNode.IsAlive && aliveNodes == 1 && gSO != nil {
-				localLog("I WIN")
-				gSO.Emit("playerVictory")
-				isPlaying = false
+			if haveIWon() {
 				return
 			}
 		}
@@ -615,6 +614,16 @@ func reportASorrowfulDeathToPeers(node *Node) {
 	msg := &Message{IsDeathReport: true, Node: *node}
 	logMsg := "Node " + node.Id + "is dead, reporting sorrowful death"
 	sendPacketsToPeers(logMsg, msg)
+}
+
+func haveIWon() bool {
+	if myNode.IsAlive && aliveNodes == 1 && gSO != nil {
+		localLog("I WIN")
+		gSO.Emit("playerVictory")
+		isPlaying = false
+		return true
+	}
+	return false
 }
 
 func notifyPeersDirChanged(direction string) {
