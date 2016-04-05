@@ -65,6 +65,7 @@ var gameHistory map[string][]*Pos // Last five moves of every node in the game. 
 
 // Sync variables.
 var waitGroup sync.WaitGroup // For internal processes.
+var mutex *sync.Mutex        // For global vars.
 
 // Game timers in milliseconds.
 var intervalUpdateRate time.Duration
@@ -132,6 +133,8 @@ func init() {
 	nodeHistory = make(map[string][]*Pos)
 	nodes = make([]*Node, 0)
 
+	mutex = &sync.Mutex{}
+
 	HistoryLimit = 5
 	gameHistory = make(map[string][]*Pos)
 	lastCheckin = make(map[string]time.Time)
@@ -184,8 +187,8 @@ func startGame() {
 
 // Update the board based on leader's history
 func UpdateBoard() {
+	mutex.Lock()
 	fmt.Println("Updating Board")
-
 	// Clear everything on the board except our head
 	for id, v := range nodeHistory {
 		for i, e := range v {
@@ -223,6 +226,7 @@ func UpdateBoard() {
 			}
 		}
 	}
+	mutex.Unlock()
 }
 
 // Each tick of the game
@@ -232,6 +236,7 @@ func tickGame() {
 	}
 
 	for {
+		mutex.Lock()
 		if imAlive && isPlaying {
 			for _, node := range nodes {
 
@@ -273,10 +278,11 @@ func tickGame() {
 						reportASorrowfulDeathToPeers(node)
 						board[y][x] = getPlayerState(node.Id)
 						isPlaying = false
-					} else if isLeader() && node.IsAlive {
+					} else if isLeader() {
 						// If leader we tell peers who the dead node is.
 						node.IsAlive = false
 						aliveNodes = aliveNodes - 1
+						board[y][x] = getPlayerState(node.Id)
 						localLog("Leader sending death report ", node.Id)
 						reportASorrowfulDeathToPeers(node)
 						// Otherwise, check if I'm the last node standing.
@@ -290,6 +296,7 @@ func tickGame() {
 				}
 			}
 		}
+		mutex.Unlock()
 		renderGame()
 		time.Sleep(tickRate)
 	}
@@ -369,6 +376,7 @@ func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
 
 // Renders the game.
 func renderGame() {
+	mutex.Lock()
 	if isLeader() {
 		go collectLast5Moves()
 	} else {
@@ -382,10 +390,12 @@ func renderGame() {
 	} else {
 		log.Println("gSO is null though")
 	}
+	mutex.Unlock()
 }
 
 // NON-LEADER: Build a history of last 5 moves for node on the board.
 func cacheLocation() {
+	mutex.Lock()
 	// Collect the state of nodes on the board as the 'TRUE' state.
 	for _, node := range nodes {
 		// Clear the list.
@@ -415,6 +425,7 @@ func cacheLocation() {
 			localLog(*p)
 		}
 	}
+	mutex.Unlock()
 }
 
 // LEADER: Build a history of last 5 moves for node on the board.
@@ -486,7 +497,9 @@ func enforceGameState() {
 		if !isLeader() {
 			return
 		} else {
+			mutex.Lock()
 			message := &Message{IsLeader: true, GameHistory: gameHistory, Node: *myNode}
+			mutex.Unlock()
 			logMsg := "Leader enforcing game state packet with game history"
 			sendPacketsToPeers(logMsg, message)
 		}
@@ -501,7 +514,9 @@ func intervalUpdate() {
 		}
 		var message *Message
 		if isLeader() {
+			mutex.Lock()
 			message = &Message{IsLeader: true, FailedNodes: failedNodes, Node: *myNode}
+			mutex.Unlock()
 		} else {
 			message = &Message{Node: *myNode}
 		}
@@ -540,6 +555,8 @@ func listenUDPPacket() {
 	checkErr(err)
 	udpConn, err := net.ListenUDP("udp", localAddr)
 	checkErr(err)
+	err = udpConn.SetReadBuffer(9000)
+	checkErr(err)
 	defer udpConn.Close()
 
 	buf := make([]byte, 1024)
@@ -576,36 +593,43 @@ func listenUDPPacket() {
 
 		if message.IsDeathReport {
 			localLog("Received death report ", node.Id)
+			mutex.Lock()
 			for _, n := range nodes {
-				if n.Id == message.Node.Id {
+				if n.Id == message.Node.Id && n.IsAlive {
 					n.IsAlive = false
-					localLog("I AM ", nodeId, ", SOMEONE IS DEAD")
+					localLog("LEADER SENT: ", n.Id, " IS DEAD")
 					aliveNodes = aliveNodes - 1
 					board[n.CurrLoc.Y][n.CurrLoc.X] = getPlayerState(n.Id)
+
+					// Check if its me.
+					if message.Node.Id == nodeId && gSO != nil {
+						localLog("OH SHOOT ITS ME")
+						gSO.Emit("playerDead")
+						isPlaying = false
+						mutex.Unlock()
+						return
+					}
 				}
 			}
 
-			// If the dead node is me, tell the front end.
-			if message.Node.Id == nodeId && gSO != nil {
-				localLog("IM DEAD REPORTING TO FRONT END")
-				gSO.Emit("playerDead")
-				isPlaying = false
-				return
-			}
-
 			if haveIWon() {
+				mutex.Unlock()
+				renderGame()
 				return
 			}
+			mutex.Unlock()
 		}
 
 		// Received a direction change from a peer.
 		// Match the state of peer by predicting its path.
 		if message.IsDirectionChange {
+			mutex.Lock()
 			for _, n := range nodes {
 				if n.Id == message.Node.Id {
 					updateLocationOfNode(n, &message.Node)
 				}
 			}
+			mutex.Unlock()
 		}
 
 		if err != nil {
@@ -665,7 +689,7 @@ func handleNodeFailure() {
 			return
 		}
 		if isLeader() {
-			localLog("Im a leader.")
+			localLog("Im a leader: ", nodeId)
 			for _, node := range nodes {
 				if node.Id != nodeId {
 					if hasExceededThreshold(lastCheckin[node.Id].UnixNano()) {
@@ -679,7 +703,7 @@ func handleNodeFailure() {
 				}
 			}
 		} else {
-			localLog("Im a node.")
+			localLog("Im a node: ", nodeId)
 			// Continually check if leader is alive.
 			leaderId := nodes[0].Id
 			if hasExceededThreshold(lastCheckin[leaderId].UnixNano()) {
