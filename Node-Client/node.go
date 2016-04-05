@@ -261,10 +261,18 @@ func tickGame() {
 					// We don't update the position to a new value
 					board[y][x] = getPlayerState(node.Id)
 
-					// If leader we tell peers who the dead node is.
-					if isLeader() && node.IsAlive {
+					if isLeader() && node.Id == nodeId && gSO != nil {
+						// If im the leader and im dead
+						localLog("IM LEADER AND IM DEAD REPORTING TO FRONT END")
+						gSO.Emit("playerDead")
 						node.IsAlive = false
-						reportASorrowfulDeath(node)
+						reportASorrowfulDeathToPeers(node)
+						isPlaying = false
+					} else if isLeader() && node.IsAlive {
+						// If leader we tell peers who the dead node is.
+						node.IsAlive = false
+						localLog("Leader sending death report ", node.Id)
+						reportASorrowfulDeathToPeers(node)
 					}
 				} else {
 					// Update player's new position.
@@ -463,21 +471,24 @@ func contains(x int, y int, list []*Pos) bool {
 // LEADER: Send game history of at most 5 previous ticks to all nodes.
 func enforceGameState() {
 	for {
+		if isPlaying == false {
+			return
+		}
 		time.Sleep(enforceGameStateRate)
 		if !isLeader() {
 			return
 		} else {
 			message := &Message{IsLeader: true, GameHistory: gameHistory, Node: *myNode}
-			sendPacketsToPeers(message)
+			logMsg := "Leader enforcing game state packet with game history"
+			sendPacketsToPeers(logMsg, message)
 		}
-
 	}
 }
 
 // Update peers with node's current location.
 func intervalUpdate() {
 	for {
-		if imAlive == false {
+		if imAlive == false || isPlaying == false {
 			return
 		}
 		var message *Message
@@ -486,16 +497,16 @@ func intervalUpdate() {
 		} else {
 			message = &Message{Node: *myNode}
 		}
-
-		sendPacketsToPeers(message)
+		logMsg := "Interval update"
+		sendPacketsToPeers(logMsg, message)
 		time.Sleep(intervalUpdateRate)
 	}
 }
 
-func sendPacketsToPeers(message *Message) {
+func sendPacketsToPeers(logMsg string, message *Message) {
 	for _, node := range nodes {
 		if node.Id != nodeId {
-			log := logSend("Sending interval update to " + node.Id + " at ip " + node.Ip)
+			log := logSend("Sending: " + logMsg + " [to: " + node.Id + " at ip " + node.Ip + "]")
 			message.Log = log
 			nodeJson, err := json.Marshal(message)
 			checkErr(err)
@@ -556,6 +567,7 @@ func listenUDPPacket() {
 		}
 
 		if message.IsDeathReport {
+			localLog("Received death report ", node.Id)
 			for _, n := range nodes {
 				if n.Id == message.Node.Id {
 					n.IsAlive = false
@@ -567,6 +579,7 @@ func listenUDPPacket() {
 			if message.Node.Id == nodeId && gSO != nil {
 				localLog("IM DEAD REPORTING TO FRONT END")
 				gSO.Emit("playerDead")
+				isPlaying = false
 				return
 			}
 
@@ -574,6 +587,7 @@ func listenUDPPacket() {
 			if myNode.IsAlive && aliveNodes == 1 && gSO != nil {
 				localLog("I WIN")
 				gSO.Emit("playerVictory")
+				isPlaying = false
 				return
 			}
 		}
@@ -597,9 +611,10 @@ func listenUDPPacket() {
 }
 
 // LEADER: Tell nodes someone has died.
-func reportASorrowfulDeath(node *Node) {
+func reportASorrowfulDeathToPeers(node *Node) {
 	msg := &Message{IsDeathReport: true, Node: *node}
-	sendPacketsToPeers(msg)
+	logMsg := "Node " + node.Id + "is dead, reporting sorrowful death"
+	sendPacketsToPeers(logMsg, msg)
 }
 
 func notifyPeersDirChanged(direction string) {
@@ -607,12 +622,12 @@ func notifyPeersDirChanged(direction string) {
 
 	// check if the direction change for node with the id
 	if prevDirection != direction {
-		log := logSend("Direction for " + nodeId + " has changed from " +
-			prevDirection + " to " + direction)
+		logMsg := "Direction for " + nodeId + " has changed from " +
+			prevDirection + " to " + direction
 		myNode.Direction = direction
 
-		msg := &Message{IsDirectionChange: true, Node: *myNode, Log: log}
-		sendPacketsToPeers(msg)
+		msg := &Message{IsDirectionChange: true, Node: *myNode}
+		sendPacketsToPeers(logMsg, msg)
 	}
 }
 
@@ -628,14 +643,12 @@ func hasExceededThreshold(nodeLastCheckin int64) bool {
 }
 
 func handleNodeFailure() {
-	if isPlaying == false {
-		return
-	}
-
 	// check if the time it last checked in exceed CHECKIN_INTERVAL
 	for {
+		if isPlaying == false {
+			return
+		}
 		if isLeader() {
-
 			localLog("Im a leader.")
 			for _, node := range nodes {
 				if node.Id != nodeId {
@@ -650,7 +663,6 @@ func handleNodeFailure() {
 				}
 			}
 		} else {
-
 			localLog("Im a node.")
 			// Continually check if leader is alive.
 			leaderId := nodes[0].Id
