@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net"
 	"net/rpc"
@@ -31,6 +32,11 @@ var msService *rpc.Client
 func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
 	nodes = args.NodeList
 	logReceive("Rpc Called Start Game", args.Log)
+	if len(nodes) > MAX_PLAYERS {
+		return errors.New("MS Server returned a node list with more than the " +
+			"max number of supported players")
+	}
+
 	log.Println("Starting game with nodes: " + printNodes())
 	msService.Close()
 	startGame()   // in node.go, call when rpc is working

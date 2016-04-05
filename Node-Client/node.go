@@ -42,6 +42,7 @@ const (
 	DIRECTION_DOWN   string = "D"
 	DIRECTION_LEFT   string = "L"
 	DIRECTION_RIGHT  string = "R"
+	MAX_PLAYERS      int    = 6
 )
 
 // Game variables.
@@ -93,10 +94,6 @@ func main() {
 
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
-
-	localLog("----INITIAL STATE----")
-	printBoard()
-	localLog("----INITIAL STATE----")
 
 	waitGroup.Add(2) // Add internal process.
 	go msRpcServce()
@@ -166,6 +163,21 @@ func startGame() {
 		}
 		lastCheckin[node.Id] = time.Now()
 	}
+
+	// Remove the node IDs of non-present players from the board.
+	for i := len(nodes) + 1; i <= MAX_PLAYERS; i++ {
+		pos, ok := initialPosition[fmt.Sprintf("p%d", i)]
+		if !ok {
+			continue
+		}
+
+		board[pos.Y][pos.X] = ""
+	}
+
+	localLog("nodeId:", nodeId)
+	localLog("----INITIAL STATE----")
+	printBoard()
+	localLog("----INITIAL STATE----")
 
 	// ================================================= //
 
