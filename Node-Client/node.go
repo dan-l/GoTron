@@ -213,6 +213,10 @@ func UpdateBoard() {
 					}
 				} else {
 					board[pos.Y][pos.X] = getPlayerState(id)
+					peerNode := getNode(id)
+					peerNode.CurrLoc.X = pos.X
+					peerNode.CurrLoc.Y = pos.Y
+
 				}
 			} else {
 				board[pos.Y][pos.X] = "t" + playerIndex
@@ -267,6 +271,7 @@ func tickGame() {
 						gSO.Emit("playerDead")
 						node.IsAlive = false
 						reportASorrowfulDeathToPeers(node)
+						board[y][x] = getPlayerState(node.Id)
 						isPlaying = false
 					} else if isLeader() && node.IsAlive {
 						// If leader we tell peers who the dead node is.
@@ -574,7 +579,9 @@ func listenUDPPacket() {
 			for _, n := range nodes {
 				if n.Id == message.Node.Id {
 					n.IsAlive = false
+					localLog("I AM ", nodeId, ", SOMEONE IS DEAD")
 					aliveNodes = aliveNodes - 1
+					board[n.CurrLoc.Y][n.CurrLoc.X] = getPlayerState(n.Id)
 				}
 			}
 
@@ -711,6 +718,26 @@ func getPlayerState(id string) string {
 		}
 	}
 	return ""
+}
+
+// Given a node id string, return the node's location X, Y on the board.
+func getPlayerLocation(id string) (int, int) {
+	for _, n := range nodes {
+		if n.Id == id {
+			return n.CurrLoc.X, n.CurrLoc.Y
+		}
+	}
+	return 0, 0
+}
+
+// Given a node id string, return the node.
+func getNode(id string) *Node {
+	for _, n := range nodes {
+		if n.Id == id {
+			return n
+		}
+	}
+	return nil
 }
 
 // Error checking. Exit program when error occurs.
