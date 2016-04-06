@@ -248,7 +248,6 @@ func tickGame() {
 		mutex.Lock()
 		if aliveNodes > 1 && (isPlaying || isLeader()) {
 			for _, node := range nodes {
-
 				if node.IsAlive == false {
 					// Not going to path predict since the node is already dead.
 					board[node.CurrLoc.Y][node.CurrLoc.X] = getPlayerState(node.Id)
@@ -288,6 +287,7 @@ func tickGame() {
 						reportASorrowfulDeathToPeers(node)
 						board[y][x] = getPlayerState(node.Id)
 						isPlaying = false
+						break // don't predict other nodes for this round, you are dead
 					} else if isLeader() {
 						// If leader we tell peers who the dead node is.
 						node.IsAlive = false
