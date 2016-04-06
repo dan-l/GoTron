@@ -28,7 +28,7 @@ func startGameUI() {
 		})
 
 		// Start the game.
-		gSO.Emit("startGame", nil)
+		gSO.Emit("startGame", nodeId+" "+nodeAddr)
 	}
 }
 

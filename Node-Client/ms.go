@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"net/rpc"
+	"strconv"
 )
 
 type NodeService int
@@ -38,10 +39,21 @@ func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
 	}
 
 	log.Println("Starting game with nodes: " + printNodes())
+	findMyNode()
 	msService.Close()
 	startGame()   // in node.go, call when rpc is working
 	startGameUI() // in httpServer.go, transition to game screen on the client.
 	return nil
+}
+
+func findMyNode() {
+	for i, node := range nodes {
+		if node.Ip == nodeAddr {
+			myNode = node
+			nodeId = node.Id
+			nodeIndex = strconv.Itoa(i + 1)
+		}
+	}
 }
 
 // Print node in the list

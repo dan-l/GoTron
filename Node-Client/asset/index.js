@@ -100,6 +100,7 @@ function hideIntroScreen() {
  *        A "board" object as defined in node.go.
  */
 function handleGameStateUpdate(state) {
+  console.log('onGameStateUpdate')
   if (!(state instanceof Array)) {
     throw new Error("Passed game state that isn't an array");
   }
@@ -161,9 +162,10 @@ function handleGameStateUpdate(state) {
 /**
  * Starts the game when we are paired with enough players.
  */
-function startGame() {
+function startGame(info) {
   window.onkeydown = handleKeyPress;
   hideIntroScreen();
+  document.getElementById('stats').innerHTML = '<h3 style="color:black">Player : ' + info + '</h3>';
 }
 
 /**
@@ -171,6 +173,7 @@ function startGame() {
  */
 function onPlayerDeath() {
     window.onkeydown = null;
+    console.log('onPlayerDeath')
     document.getElementById('message').innerHTML = '<h3 style="color:red">You are dead!</h3>';
 }
 
@@ -179,15 +182,17 @@ function onPlayerDeath() {
  */
 function onPlayerVictory() {
      window.onkeydown = null;
+     console.log('onPlayerVictory')
      document.getElementById('message').innerHTML = '<h3 style="color:red"><marquee>YOU WIN!</h3>';
 }
 
 function main() {
+  console.log('main')
   // Register handlers.
   gSocket.on("startGame", startGame);
   gSocket.on("gameStateUpdate", handleGameStateUpdate);
   gSocket.on("playerDead", onPlayerDeath);
-  gSocket.on("victory", onPlayerVictory);
+  gSocket.on("playerVictory", onPlayerVictory);
 }
 
 main();
