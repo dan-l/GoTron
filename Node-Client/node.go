@@ -189,6 +189,8 @@ func startGame() {
 func UpdateBoard() {
 	mutex.Lock()
 	fmt.Println("Updating Board")
+	localLog("Received gameHistory from Leader")
+
 	// Clear everything on the board except our head
 	for id, v := range nodeHistory {
 		for i, e := range v {
@@ -204,6 +206,11 @@ func UpdateBoard() {
 		buf := []byte(id)
 		playerIndex := string(buf[1])
 
+		localLog(id)
+		for _, p := range nodeHistory[id] {
+			localLog(*p)
+		}
+
 		// Apply Leader's History onto the board
 		for i, pos := range gameHistory[id] {
 			if i == 0 {
@@ -211,6 +218,8 @@ func UpdateBoard() {
 				if nodeId == id {
 					if myNode.CurrLoc.X == pos.X && myNode.CurrLoc.Y == pos.Y {
 						board[pos.Y][pos.X] = getPlayerState(id)
+						myNode.CurrLoc.X = pos.X
+						myNode.CurrLoc.Y = pos.Y
 					} else {
 						board[pos.Y][pos.X] = "t" + playerIndex
 					}
@@ -237,7 +246,7 @@ func tickGame() {
 
 	for {
 		mutex.Lock()
-		if imAlive && isPlaying {
+		if aliveNodes > 1 && (isPlaying || isLeader()) {
 			for _, node := range nodes {
 
 				if node.IsAlive == false {
@@ -275,6 +284,7 @@ func tickGame() {
 						localLog("IM LEADER AND IM DEAD REPORTING TO FRONT END")
 						gSO.Emit("playerDead")
 						node.IsAlive = false
+						aliveNodes = aliveNodes - 1
 						reportASorrowfulDeathToPeers(node)
 						board[y][x] = getPlayerState(node.Id)
 						isPlaying = false
@@ -636,7 +646,7 @@ func listenUDPPacket() {
 			localLog("Error: ", err)
 		}
 
-		time.Sleep(400 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
