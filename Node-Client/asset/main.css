@@ -78,3 +78,8 @@ body {
     transform: rotate(360deg);
   }
 }
+
+.gameMessage {
+    color: red;
+    display: none;
+}
