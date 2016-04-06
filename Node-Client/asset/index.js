@@ -104,9 +104,9 @@ function handleGameStateUpdate(state) {
     throw new Error("Passed game state that isn't an array");
   }
 
-  // If for some reason we haven't hidden the intro screen by now, force it to
-  // do so.
-  hideIntroScreen();
+  // If for some reason we didn't receive a "startGame" message at this point,
+  // just pretend we did so that the game can still be played.
+  startGame();
 
   // For now, we want to throw away the existing canvas and repaint everything
   // whenever we get an update. All of this is pretty inefficient, but probably
