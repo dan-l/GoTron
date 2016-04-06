@@ -73,7 +73,7 @@ type ValReply struct {
 // MS node
 type MsNode struct {
 	Node *Node
-	Id   int
+	Id   int // the order of node
 }
 
 type MsNodeList []*MsNode
@@ -195,17 +195,17 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	logReceive("AD: new node:", nodeJoin.Log)
 	AddNode(this, nodeJoin)
 
-	//this.checkConn() // Update NodeList and Connections
+	this.checkConn() // Update NodeList and Connections
 
 	// Check if the room is full
-	//if len(this.nodeList) >= this.roomLimit {
-	//this.NodeLock.Lock()
-	//fmt.Println("Join: Starting Game")
-	//this.makeGameRoom()
-	//this.assignID()
-	//this.startGame()
-	//this.NodeLock.Unlock()
-	//}
+	if len(this.nodeList) >= this.roomLimit {
+		this.NodeLock.Lock()
+		fmt.Println("Join: Starting Game")
+		this.makeGameRoom()
+		this.assignID()
+		this.startGame()
+		this.NodeLock.Unlock()
+	}
 	return nil
 }
 
@@ -228,7 +228,6 @@ func endSession(this *Context) {
 		} else {
 			this.gameTimer.Reset(sessionDelay)
 			log.Println("ES:", len(this.nodeList), "players")
-			//log.Println("ES:", len(this.nodeList), "players currently.")
 		}
 
 	}
@@ -289,7 +288,7 @@ func main() {
 		connections: make(map[string]*rpc.Client),
 		nodeList:    make(map[string]*MsNode),
 		clientNum:   0,
-		roomLimit:   5,
+		roomLimit:   6,
 		gameRoom:    make([]*Node, 0),
 		gameTimer:   time.NewTimer(5 * time.Second),
 	}
