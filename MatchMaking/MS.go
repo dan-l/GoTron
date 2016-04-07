@@ -271,7 +271,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 7 * time.Second
+const sessionDelay time.Duration = 10 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const RpcMessage string = "NodeService.Message"
 const leastPlayers int = 2
@@ -290,7 +290,7 @@ func main() {
 		clientNum:   0,
 		roomLimit:   6,
 		gameRoom:    make([]*Node, 0),
-		gameTimer:   time.NewTimer(5 * time.Second),
+		gameTimer:   time.NewTimer(10 * time.Second),
 	}
 
 	// get arguments
