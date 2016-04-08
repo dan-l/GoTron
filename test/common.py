@@ -1,8 +1,8 @@
 #!/usr/bin/env python2
 
 import contextlib
-import multiprocessing
 import os
+import psutil
 import subprocess
 import time
 
@@ -16,7 +16,22 @@ def use_cwd(new_cwd):
     yield
     os.chdir(original_cwd)
 
-class MatchMakingServer(object):
+class CommonBinary(object):
+    def __init__(self):
+        self._process = None
+
+    def kill(self):
+        try:
+            psutil.Process(self._process.pid).kill()
+        except psutil.NoSuchProcess:
+            # This method is best effort, so keep going even if the process
+            # can't be killed.
+            pass
+
+    def wait(self):
+        self._process.wait()
+
+class MatchMakingServer(CommonBinary):
     def __init__(self, port):
         self._bin_path = None
         self._port = port
@@ -35,14 +50,14 @@ class MatchMakingServer(object):
         if not self._bin_path:
             raise Exception("Couldn't find matchmaking binary to run")
 
-    def _start(self):
-        subprocess.call([self._bin_path, "localhost:{}".format(self._port)])
-
     def start(self):
-        ms_server = multiprocessing.Process(target=self._start)
-        ms_server.start()
+        with open(os.devnull, "w") as dev_null:
+            self._process = subprocess.Popen([self._bin_path,
+                                              "localhost:{}".format(self._port)],
+                                             stdout=dev_null,
+                                             stderr=dev_null)
 
-class Client(object):
+class Client(CommonBinary):
     def __init__(self, node_port, node_rpc_port, ms_port, http_srv_port):
         self._process = None
         self._bin_path = None
@@ -73,22 +88,19 @@ class Client(object):
         if not self._bin_path:
             raise Exception("Couldn't find client binary to run")
 
-    def _start(self):
+    def start(self):
         # Our HTML assets are only loaded if we run the binary from the correct
         # cwd.
-        with use_cwd(os.path.join(os.path.dirname(_HERE), "Node-Client")):
-            subprocess.call([self._bin_path,
-                             "localhost:{}".format(self._node_port),
-                             "localhost:{}".format(self._node_rpc_port),
-                             "localhost:{}".format(self._ms_port),
-                             "localhost:{}".format(self._http_srv_port)])
-
-    def start(self):
-        self._process = multiprocessing.Process(target=self._start)
-        self._process.start()
-
-    def kill(self):
-        self._process.terminate()
+        with use_cwd(NODE_CLIENT_DIR), open(os.devnull, "w") as dev_null:
+            self._process = subprocess.Popen([
+                self._bin_path,
+                "localhost:{}".format(self._node_port),
+                "localhost:{}".format(self._node_rpc_port),
+                "localhost:{}".format(self._ms_port),
+                "localhost:{}".format(self._http_srv_port)
+            ],
+            stdout=dev_null,
+            stderr=dev_null)
 
 def start_multiple_clients(ms_srv_port, client_count):
     clients = []

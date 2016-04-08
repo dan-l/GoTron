@@ -19,7 +19,12 @@ def main():
     ms_srv.start()
     time.sleep(1)
 
-    _ = common.start_multiple_clients(ms_srv_port, args.client_count)
+    clients = common.start_multiple_clients(ms_srv_port, args.client_count)
+
+    # Wait for the processes to end so that Ctrl-C kills all processes at once.
+    ms_srv.wait()
+    for client in clients:
+        client.wait()
 
 if __name__ == "__main__":
     main()
