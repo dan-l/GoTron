@@ -246,7 +246,7 @@ func tickGame() {
 			// the location of all players via path prediction. If the local
 			// player is dead, we only want to do path prediction for all other
 			// non-dead players.
-			if imAlive || isPlaying || node.Id != nodeId {
+			if (imAlive && isPlaying) || node.Id != nodeId {
 				// Path prediction
 				board[y][x] = "t" + playerIndex // Change position to be a trail.
 				switch direction {
