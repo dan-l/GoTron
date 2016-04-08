@@ -15,6 +15,7 @@ var _gSO socketio.Socket
 // Starts the UI game screen.
 func startGameUI() {
 	if _gSO == nil {
+		localLog("socketio is NIL !!!")
 		return
 	}
 
@@ -29,11 +30,13 @@ func startGameUI() {
 	})
 
 	// Start the game.
-	_gSO.Emit("startGame", nil)
+	log.Println("Start game ", nodeId+" "+nodeAddr)
+	_gSO.Emit("startGame", nodeId+" "+nodeAddr)
 }
 
 func pushGameStateToJS(state [BOARD_SIZE][BOARD_SIZE]string) {
 	if _gSO == nil {
+		localLog("socketio is NIL !!!")
 		return
 	}
 
@@ -42,6 +45,7 @@ func pushGameStateToJS(state [BOARD_SIZE][BOARD_SIZE]string) {
 
 func notifyPlayerDeathToJS() {
 	if _gSO == nil {
+		localLog("socketio is NIL !!!")
 		return
 	}
 
@@ -50,6 +54,7 @@ func notifyPlayerDeathToJS() {
 
 func notifyPlayerVictoryToJS() {
 	if _gSO == nil {
+		localLog("socketio is NIL !!!")
 		return
 	}
 

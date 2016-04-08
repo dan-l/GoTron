@@ -104,14 +104,9 @@ function hideIntroScreen() {
  *        A "board" object as defined in node.go.
  */
 function handleGameStateUpdate(state) {
+  console.log('onGameStateUpdate')
   if (!(state instanceof Array)) {
     throw new Error("Passed game state that isn't an array");
-  }
-
-  // If for some reason we didn't receive a "startGame" message at this point,
-  // just pretend we did so that the game can still be played.
-  if (!gGameEnded) {
-    startGame();
   }
 
   // For now, we want to throw away the existing canvas and repaint everything
@@ -167,9 +162,10 @@ function handleGameStateUpdate(state) {
 /**
  * Starts the game when we are paired with enough players.
  */
-function startGame() {
+function startGame(info) {
   window.onkeydown = handleKeyPress;
   hideIntroScreen();
+  document.getElementById('stats').innerHTML = '<h3 style="color:black">Player : ' + info + '</h3>';
 }
 
 /**
@@ -180,6 +176,7 @@ function onPlayerDeath() {
     return;
   }
 
+  console.log('onPlayerDeath')
   gGameEnded = true;
   window.onkeydown = null;
   document.getElementById("deadMsg").style.display = "inline";
@@ -192,18 +189,20 @@ function onPlayerVictory() {
   if (gGameEnded) {
     return;
   }
-
+  console.log('onPlayerVictory')
   gGameEnded = true;
   window.onkeydown = null;
   document.getElementById("winMsg").style.display = "inline";
+
 }
 
 function main() {
+  console.log('main')
   // Register handlers.
   gSocket.on("startGame", startGame);
   gSocket.on("gameStateUpdate", handleGameStateUpdate);
   gSocket.on("playerDead", onPlayerDeath);
-  gSocket.on("victory", onPlayerVictory);
+  gSocket.on("playerVictory", onPlayerVictory);
 }
 
 main();
