@@ -696,6 +696,7 @@ func haveIWon() bool {
 }
 
 func notifyPeersDirChanged(direction string) {
+	mutex.Lock()
 	prevDirection := myNode.Direction
 
 	// check if the direction change for node with the id
@@ -708,6 +709,7 @@ func notifyPeersDirChanged(direction string) {
 		localLog(logMsg, msg)
 		sendPacketsToPeers(logMsg, msg)
 	}
+	mutex.Unlock()
 }
 
 func isLeader() bool {
