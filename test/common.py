@@ -4,8 +4,10 @@ import contextlib
 import multiprocessing
 import os
 import subprocess
+import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+NODE_CLIENT_DIR = os.path.join(os.path.dirname(_HERE), "Node-Client")
 
 @contextlib.contextmanager
 def use_cwd(new_cwd):
@@ -49,10 +51,9 @@ class Client(object):
         self._ms_port = ms_port
         self._http_srv_port = http_srv_port
 
-        nc_dir = os.path.join(os.path.dirname(_HERE), "Node-Client")
         possible_bin_paths = [
-            os.path.join(nc_dir, ".vendor", "bin", "Node-Client"),
-            os.path.join(nc_dir, "Node-Client.exe"),
+            os.path.join(NODE_CLIENT_DIR, ".vendor", "bin", "Node-Client"),
+            os.path.join(NODE_CLIENT_DIR, "Node-Client.exe"),
         ]
 
         env = os.environ
@@ -88,3 +89,18 @@ class Client(object):
 
     def kill(self):
         self._process.terminate()
+
+def start_multiple_clients(ms_srv_port, client_count):
+    clients = []
+    for client_num in range(client_count):
+        node_port = 9999 - (client_num * 3)
+        node_rpc_port = 9998 - (client_num * 3)
+        http_srv_port = 9997 - (client_num * 3)
+        clients.append(Client(node_port=node_port,
+                              node_rpc_port=node_rpc_port,
+                              ms_port=ms_srv_port,
+                              http_srv_port=http_srv_port))
+        clients[-1].start()
+        time.sleep(1)
+
+    return clients

@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import argparse
-import sys
 import time
 
 import common
@@ -20,19 +19,7 @@ def main():
     ms_srv.start()
     time.sleep(1)
 
-    for client_num in range(args.client_count):
-        print "Starting client {}".format(client_num + 1)
-        node_port = 9999 - (client_num * 3)
-        node_rpc_port = 9998 - (client_num * 3)
-        http_srv_port = 9997 - (client_num * 3)
-        client = common.Client(node_port=node_port,
-                               node_rpc_port=node_rpc_port,
-                               ms_port=ms_srv_port,
-                               http_srv_port=http_srv_port)
-        time.sleep(1)
-        client.start()
-
-    return "test"
+    _ = common.start_multiple_clients(ms_srv_port, args.client_count)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
