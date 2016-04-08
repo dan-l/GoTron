@@ -365,7 +365,6 @@ func matchPositionInAxis(axis int, draw bool, from *Node, to *Node) {
 
 	nodePlayer := getPlayerState(from.Id)
 
-	board[fromY][fromX] = nodeTrail
 	if axis == AXIS_X { // Match X axis.
 		i := fromX
 		increment := -1
@@ -607,8 +606,8 @@ func processPacket(buf []byte, addr *net.UDPAddr, n int) {
 		// Check if message.History exist
 		if message.GameHistory != nil {
 			// Cache history info from the leader
-			gameHistory = message.GameHistory
-			UpdateBoard()
+			//gameHistory = message.GameHistory
+			//UpdateBoard()
 		}
 	}
 
@@ -707,7 +706,7 @@ func notifyPeersDirChanged(direction string) {
 
 		msg := &Message{IsDirectionChange: true, Node: *myNode}
 		localLog(logMsg, msg)
-		//sendPacketsToPeers(logMsg, msg)
+		sendPacketsToPeers(logMsg, msg)
 	}
 }
 
