@@ -44,6 +44,8 @@ const (
 	DIRECTION_LEFT   string = "L"
 	DIRECTION_RIGHT  string = "R"
 	MAX_PLAYERS      int    = 6
+	AXIS_X           int    = 0
+	AXIS_Y           int    = 1
 )
 
 // Game variables.
@@ -308,6 +310,7 @@ func tickGame() {
 					node.CurrLoc.Y = new_y
 				}
 			}
+			mutex.Unlock()
 		}
 		mutex.Unlock()
 		renderGame()
@@ -319,58 +322,66 @@ func tickGame() {
 // (Predicting a path from a given prev location and new location).
 func updateLocationOfNode(fromCurrent *Node, to *Node) {
 	currentDir := fromCurrent.Direction
-	currentX := fromCurrent.CurrLoc.X
-	currentY := fromCurrent.CurrLoc.Y
-
 	newDir := to.Direction
-	newX := to.CurrLoc.X
-	newY := to.CurrLoc.Y
 
-	empty := ""
-	nodeName := to.Id // p1, p2, etc.
-	nodeTrail := "t" + nodeName[len(nodeName)-1:]
+	if newDir == currentDir {
+		return
+	}
 
-	if currentX == newX && currentY == newY {
-		fromCurrent.Direction = newDir
+	if currentDir == DIRECTION_UP || currentDir == DIRECTION_DOWN {
+		matchPositionInAxis(AXIS_Y, false, fromCurrent, to)
+		matchPositionInAxis(AXIS_X, true, fromCurrent, to)
 	} else {
-		if currentDir == DIRECTION_UP {
-			board[currentY][currentX] = empty
-			i := currentY
-			for i > newY {
-				board[i][currentX] = nodeTrail
-				i--
-			}
-			board[newY][currentX] = nodeName
-			fromCurrent.CurrLoc.Y = newY
-		} else if currentDir == DIRECTION_DOWN {
-			board[currentY][currentX] = empty
-			i := currentY
-			for i < newY {
-				board[i][currentX] = nodeTrail
-				i++
-			}
-			board[newY][currentX] = nodeName
-			fromCurrent.CurrLoc.Y = newY
-		} else if currentDir == DIRECTION_LEFT {
-			board[currentY][currentX] = empty
-			i := currentX
-			for i > newX {
-				board[currentY][i] = nodeTrail
-				i--
-			}
-			board[currentY][newX] = nodeName
-			fromCurrent.CurrLoc.X = newX
-		} else { // DIRECTION_RIGHT
-			board[currentY][currentX] = empty
-			i := currentX
-			for i < newX {
-				board[currentY][i] = nodeTrail
-				i++
-			}
-			board[currentY][newX] = nodeName
-			fromCurrent.CurrLoc.X = newX
+		matchPositionInAxis(AXIS_X, false, fromCurrent, to)
+		matchPositionInAxis(AXIS_Y, true, fromCurrent, to)
+	}
+
+	fromCurrent.Direction = newDir
+}
+
+// Match position of current node to the new position in the
+// given axis direction and whether to draw or delete trail.
+// Axis is one of:
+//		- AXIS_X
+//		- AXIS_Y
+func matchPositionInAxis(axis int, draw bool, from *Node, to *Node) {
+	nodeName := from.Id
+	fromX := from.CurrLoc.X
+	fromY := from.CurrLoc.Y
+	toX := to.CurrLoc.X
+	toY := to.CurrLoc.Y
+
+	nodeTrail := ""
+	if draw {
+		nodeTrail = "t" + nodeName[len(nodeName)-1:]
+	}
+
+	nodePlayer := getPlayerState(from.Id)
+
+	if axis == AXIS_X { // Match X axis.
+		i := fromX
+		increment := -1
+		if toX > fromX {
+			increment = 1
 		}
-		fromCurrent.Direction = newDir
+		for i != toX {
+			board[fromY][i] = nodeTrail
+			i = increment + i
+		}
+		board[fromY][i] = nodePlayer
+		from.CurrLoc.X = toX
+	} else { // Match Y axis.
+		i := fromY
+		increment := -1
+		if toY > fromY {
+			increment = 1
+		}
+		for i != toY {
+			board[fromY][i] = nodeTrail
+			i = increment + i
+		}
+		board[i][fromX] = nodePlayer
+		from.CurrLoc.Y = toY
 	}
 }
 
@@ -510,6 +521,7 @@ func enforceGameState() {
 			mutex.Unlock()
 			logMsg := "Leader enforcing game state packet with game history"
 			sendPacketsToPeers(logMsg, message)
+			localLog(logMsg, message)
 		}
 	}
 }
@@ -522,7 +534,9 @@ func intervalUpdate() {
 		}
 		var message *Message
 		if isLeader() {
+			mutex.Lock()
 			message = &Message{IsLeader: true, FailedNodes: failedNodes, Node: *myNode}
+			mutex.Unlock()
 		} else {
 			message = &Message{Node: *myNode}
 		}
@@ -618,12 +632,16 @@ func processPacket(buf []byte, addr *net.UDPAddr, n int) {
 	if message.IsDirectionChange {
 		mutex.Lock()
 		for _, n := range nodes {
-			if n.Id == node.Id {
-				updateLocationOfNode(n, &node)
+			if n.Id == message.Node.Id {
+				n.Direction = message.Node.Direction
 			}
 		}
 		mutex.Unlock()
 	}
+	mutex.Lock()
+	mNode := getNode(message.Node.Id)
+	updateLocationOfNode(mNode, &message.Node)
+	mutex.Unlock()
 }
 
 func listenUDPPacket() {
@@ -641,7 +659,6 @@ func listenUDPPacket() {
 		n, addr, err := udpConn.ReadFromUDP(buf)
 		checkErr(err)
 		go processPacket(buf, addr, n)
-
 		time.Sleep(100 * time.Millisecond)
 	}
 }
@@ -664,6 +681,7 @@ func haveIWon() bool {
 }
 
 func notifyPeersDirChanged(direction string) {
+	mutex.Lock()
 	prevDirection := myNode.Direction
 
 	// check if the direction change for node with the id
@@ -673,8 +691,10 @@ func notifyPeersDirChanged(direction string) {
 		myNode.Direction = direction
 
 		msg := &Message{IsDirectionChange: true, Node: *myNode}
+		localLog(logMsg, msg)
 		sendPacketsToPeers(logMsg, msg)
 	}
+	mutex.Unlock()
 }
 
 func isLeader() bool {

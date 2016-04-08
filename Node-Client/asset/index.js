@@ -193,7 +193,6 @@ function onPlayerVictory() {
   gGameEnded = true;
   window.onkeydown = null;
   document.getElementById("winMsg").style.display = "inline";
-
 }
 
 function main() {
