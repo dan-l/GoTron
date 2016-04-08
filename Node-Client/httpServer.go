@@ -58,7 +58,7 @@ func notifyPlayerVictoryToJS() {
 		return
 	}
 
-	_gSO.Emit("victory")
+	_gSO.Emit("playerVictory")
 }
 
 func httpServe() {
