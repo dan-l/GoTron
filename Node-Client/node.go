@@ -310,7 +310,6 @@ func tickGame() {
 					node.CurrLoc.Y = new_y
 				}
 			}
-			mutex.Unlock()
 		}
 		mutex.Unlock()
 		renderGame()
