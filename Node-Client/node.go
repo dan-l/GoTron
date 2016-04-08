@@ -234,21 +234,19 @@ func UpdateBoard() {
 // Each tick of the game
 func tickGame() {
 	for {
-		// Always emit game state updates to ensure that the JS side renders the
-		// most recent and correct state.
-		pushGameStateToJS(board)
-		if !isPlaying {
-			continue
-		}
-		if imAlive && isPlaying {
-			for _, node := range nodes {
-				playerIndex := string(node.Id[len(node.Id)-1])
-				direction := node.Direction
-				x := node.CurrLoc.X
-				y := node.CurrLoc.Y
-				new_x := node.CurrLoc.X
-				new_y := node.CurrLoc.Y
+		for _, node := range nodes {
+			playerIndex := string(node.Id[len(node.Id)-1])
+			direction := node.Direction
+			x := node.CurrLoc.X
+			y := node.CurrLoc.Y
+			new_x := node.CurrLoc.X
+			new_y := node.CurrLoc.Y
 
+			// If the local player is still alive and playing, we want to update
+			// the location of all players via path prediction. If the local
+			// player is dead, we only want to do path prediction for all other
+			// non-dead players.
+			if imAlive || isPlaying || node.Id != nodeId {
 				// Path prediction
 				board[y][x] = "t" + playerIndex // Change position to be a trail.
 				switch direction {
@@ -277,23 +275,8 @@ func tickGame() {
 					node.CurrLoc.X = new_x
 					node.CurrLoc.Y = new_y
 				}
-
-				// // Store my position locally
-				// if len(nodeHistory[node.Id]) >= HistoryLimit {
-				// 	nodeHistory[node.Id] = nodeHistory[node.Id][1:]
-				// 	nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
-				// } else {
-				// 	nodeHistory[node.Id] = append(nodeHistory[node.Id], node.CurrLoc)
-				// }
 			}
 		}
-
-		// for k, v := range nodeHistory {
-		// 	localLog(k, "with len", len(v))
-		// 	for _, e := range v {
-		// 		localLog(k, "has ", *e)
-		// 	}
-		// }
 
 		renderGame()
 		time.Sleep(tickRate)
