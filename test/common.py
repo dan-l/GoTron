@@ -65,6 +65,8 @@ class Client(CommonBinary):
         self._node_rpc_port = node_rpc_port
         self._ms_port = ms_port
         self._http_srv_port = http_srv_port
+        self.local_log_filename = "localhost{}-local.txt".format(node_port)
+        self.govector_log_filename = "localhost{}-Log.txt".format(node_port)
 
         possible_bin_paths = [
             os.path.join(NODE_CLIENT_DIR, ".vendor", "bin", "Node-Client"),
