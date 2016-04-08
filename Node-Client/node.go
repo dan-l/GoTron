@@ -255,63 +255,71 @@ func UpdateBoard() {
 // Each tick of the game
 func tickGame() {
 	for {
-		mutex.Lock()
-		for _, node := range nodes {
-			playerIndex := string(node.Id[len(node.Id)-1])
-			direction := node.Direction
-			x := node.CurrLoc.X
-			y := node.CurrLoc.Y
-			new_x := node.CurrLoc.X
-			new_y := node.CurrLoc.Y
+		if isPlaying {
+			mutex.Lock()
+			for _, node := range nodes {
+				playerIndex := string(node.Id[len(node.Id)-1])
+				direction := node.Direction
+				x := node.CurrLoc.X
+				y := node.CurrLoc.Y
+				new_x := node.CurrLoc.X
+				new_y := node.CurrLoc.Y
 
-			// If the local player is still alive and playing, we want to update
-			// the location of all players via path prediction. If the local
-			// player is dead, we only want to do path prediction for all other
-			// non-dead players.
-			if (imAlive && isPlaying) || node.Id != nodeId {
-				// Path prediction
-				board[y][x] = "t" + playerIndex // Change position to be a trail.
-				switch direction {
-				case DIRECTION_UP:
-					new_y = intMax(0, y-1)
-				case DIRECTION_DOWN:
-					new_y = intMin(BOARD_SIZE-1, y+1)
-				case DIRECTION_LEFT:
-					new_x = intMax(0, x-1)
-				case DIRECTION_RIGHT:
-					new_x = intMin(BOARD_SIZE-1, x+1)
-				}
+				// If the local player is still alive and playing, we want to update
+				// the location of all players via path prediction. If the local
+				// player is dead, we only want to do path prediction for all other
+				// non-dead players.
+				if (imAlive && isPlaying) || node.Id != nodeId {
+					// Path prediction
+					board[y][x] = "t" + playerIndex // Change position to be a trail.
+					switch direction {
+					case DIRECTION_UP:
+						new_y = intMax(0, y-1)
+					case DIRECTION_DOWN:
+						new_y = intMin(BOARD_SIZE-1, y+1)
+					case DIRECTION_LEFT:
+						new_x = intMax(0, x-1)
+					case DIRECTION_RIGHT:
+						new_x = intMin(BOARD_SIZE-1, x+1)
+					}
 
-				if nodeHasCollided(x, y, new_x, new_y) {
-					localLog("NODE " + node.Id + " IS DEAD")
-					if isLeader() && node.Id == nodeId && node.IsAlive {
-						node.IsAlive = false
-						aliveNodes = aliveNodes - 1
-						localLog("IM LEADER AND IM DEAD REPORTING TO FRONT END")
-						notifyPlayerDeathToJS()
-						reportASorrowfulDeathToPeers(node)
-					} else if isLeader() {
-						// If leader we tell peers who the dead node is.
-						node.IsAlive = false
-						aliveNodes = aliveNodes - 1
-						localLog("Leader sending death report ", node.Id)
-						reportASorrowfulDeathToPeers(node)
+					if nodeHasCollided(x, y, new_x, new_y) {
+						localLog("NODE " + node.Id + " IS DEAD")
+						if isLeader() && node.Id == nodeId && node.IsAlive {
+							node.IsAlive = false
+							aliveNodes = aliveNodes - 1
+							localLog("IM LEADER AND IM DEAD REPORTING TO FRONT END")
+							notifyPlayerDeathToJS()
+							reportASorrowfulDeathToPeers(node)
+						} else if isLeader() {
+							// If leader we tell peers who the dead node is.
+							node.IsAlive = false
+							aliveNodes = aliveNodes - 1
+							localLog("Leader sending death report ", node.Id)
+							reportASorrowfulDeathToPeers(node)
+						}
+						// We don't update the position to a new value
+						board[y][x] = getPlayerState(node.Id)
+						// check if I'm the last node standing.
+						if haveIWon() {
+							localLog("Leader won")
+							break
+						} else if aliveNodes == 1 {
+							// TODO verify proposed fix
+							localLog("Game over")
+							isPlaying = false
+							break
+						}
+					} else {
+						// Update player's new position.
+						board[new_y][new_x] = getPlayerState(node.Id)
+						node.CurrLoc.X = new_x
+						node.CurrLoc.Y = new_y
 					}
-					// We don't update the position to a new value
-					board[y][x] = getPlayerState(node.Id)
-					// check if I'm the last node standing.
-					if haveIWon() {
-						break
-					}
-				} else {
-					// Update player's new position.
-					board[new_y][new_x] = getPlayerState(node.Id)
-					node.CurrLoc.X = new_x
-					node.CurrLoc.Y = new_y
 				}
 			}
+			mutex.Unlock()
 		}
-		mutex.Unlock()
 		renderGame()
 		time.Sleep(tickRate)
 	}
