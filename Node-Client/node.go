@@ -236,9 +236,7 @@ func tickGame() {
 	for {
 		// Always emit game state updates to ensure that the JS side renders the
 		// most recent and correct state.
-		if gSO != nil {
-			gSO.Emit("gameStateUpdate", board)
-		}
+		pushGameStateToJS(board)
 		if !isPlaying {
 			continue
 		}
@@ -270,12 +268,8 @@ func tickGame() {
 					board[y][x] = "d" + playerIndex // Dead node
 					if node.Id == nodeId && imAlive {
 						imAlive = false
-						if gSO != nil {
-							gSO.Emit("playerDead")
-							reportMySorrowfulDeath()
-						} else {
-							log.Fatal("Socket object somehow still not set up")
-						}
+						notifyPlayerDeathToJS()
+						reportMySorrowfulDeath()
 					}
 				} else {
 					// Update player's new position.
@@ -388,11 +382,7 @@ func renderGame() {
 	}
 
 	printBoard()
-	if gSO != nil {
-		gSO.Emit("gameStateUpdate", board)
-	} else {
-		log.Println("gSO is null though")
-	}
+	pushGameStateToJS(board)
 }
 
 // NON-LEADER: Build a history of last 5 moves for node on the board.
@@ -587,10 +577,8 @@ func listenUDPPacket() {
 			log.Println("**** DEATH REPORT *** size is now ", strconv.Itoa(aliveNodes))
 			if aliveNodes == 1 {
 				// Oh wow, I'm the only one alive!
-				if gSO != nil {
-					gSO.Emit("victory")
-					isPlaying = false
-				}
+				notifyPlayerVictoryToJS()
+				isPlaying = false
 			}
 		}
 
