@@ -8,6 +8,7 @@ import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 NODE_CLIENT_DIR = os.path.join(os.path.dirname(_HERE), "Node-Client")
+MATCHMAKING_DIR = os.path.join(os.path.dirname(_HERE), "MatchMaking")
 
 @contextlib.contextmanager
 def use_cwd(new_cwd):
@@ -19,6 +20,7 @@ def use_cwd(new_cwd):
 class CommonBinary(object):
     def __init__(self):
         self._process = None
+        self._bin_path = None
 
     def kill(self):
         try:
@@ -33,13 +35,13 @@ class CommonBinary(object):
 
 class MatchMakingServer(CommonBinary):
     def __init__(self, port):
-        self._bin_path = None
+        super(MatchMakingServer, self).__init__()
         self._port = port
+        self.local_log_filename = "127.0.0.1{}-local.txt".format(port)
 
-        ms_dir = os.path.join(os.path.dirname(_HERE), "MatchMaking")
         possible_bin_paths = [
-            os.path.join(ms_dir, "MS"),
-            os.path.join(ms_dir, "MS.exe"),
+            os.path.join(MATCHMAKING_DIR, "MS"),
+            os.path.join(MATCHMAKING_DIR, "MS.exe"),
         ]
         for possible_bin_path in possible_bin_paths:
             if not os.path.isfile(possible_bin_path):
@@ -51,7 +53,9 @@ class MatchMakingServer(CommonBinary):
             raise Exception("Couldn't find matchmaking binary to run")
 
     def start(self):
-        with open(os.devnull, "w") as dev_null:
+        # We force the working directory to be |MATCHMAKING_DIR| so tests can
+        # use a fixed path to log files.
+        with use_cwd(MATCHMAKING_DIR), open(os.devnull, "w") as dev_null:
             self._process = subprocess.Popen([self._bin_path,
                                               "localhost:{}".format(self._port)],
                                              stdout=dev_null,
@@ -59,8 +63,7 @@ class MatchMakingServer(CommonBinary):
 
 class Client(CommonBinary):
     def __init__(self, node_port, node_rpc_port, ms_port, http_srv_port):
-        self._process = None
-        self._bin_path = None
+        super(Client, self).__init__()
         self._node_port = node_port
         self._node_rpc_port = node_rpc_port
         self._ms_port = ms_port

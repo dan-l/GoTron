@@ -219,7 +219,7 @@ func endSession(this *Context) {
 		// At are at least 2 players in the room
 		if len(this.nodeList) >= leastPlayers {
 			this.NodeLock.Lock()
-			fmt.Println("ES: Starting Game")
+			localLog("ES: Starting Game")
 			this.makeGameRoom()
 			this.assignID()
 			this.startGame()
@@ -227,7 +227,7 @@ func endSession(this *Context) {
 			this.NodeLock.Unlock()
 		} else {
 			this.gameTimer.Reset(sessionDelay)
-			log.Println("ES:", len(this.nodeList), "players")
+			localLog("ES:", len(this.nodeList), "players")
 		}
 
 	}
