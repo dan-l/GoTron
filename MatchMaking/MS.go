@@ -202,7 +202,7 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
 		this.NodeLock.Lock()
-		fmt.Println("Join: Starting Game")
+		localLog("Join: Starting Game")
 		this.makeGameRoom()
 		this.assignID()
 		this.startGame()
