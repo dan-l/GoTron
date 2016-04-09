@@ -49,3 +49,4 @@ class TooLittlePlayersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+    print "Please issue Ctrl-C to try and kill any zombie processes."

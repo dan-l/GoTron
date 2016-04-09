@@ -67,6 +67,9 @@ class ClientFailureTest(unittest.TestCase):
             self.assertFalse(found_leader_msg,
                              "Client 3 should never have been a leader")
 
+        # TODO: We should check that the leader informed the other clients that
+        #       client 2 failed.
+
         ms_srv.kill()
         ms_srv.wait()
         for client in clients:
@@ -75,3 +78,4 @@ class ClientFailureTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+    print "Please issue Ctrl-C to try and kill any zombie processes."

@@ -118,6 +118,6 @@ def start_multiple_clients(ms_srv_port, client_count):
                               ms_port=ms_srv_port,
                               http_srv_port=http_srv_port))
         clients[-1].start()
-        time.sleep(1)
+        time.sleep(0.5)
 
     return clients
