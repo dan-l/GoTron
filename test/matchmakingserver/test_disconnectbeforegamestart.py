@@ -27,14 +27,15 @@ class DisconnectBeforeGameStartTest(unittest.TestCase):
         # connected.
         time.sleep(7)
 
-        # Start client 2, then disconnect client 2 by killing it.
+        # Start client 2, then disconnect client 1 by killing client 1.
         client2 = common.Client(node_port=9003,
                                 node_rpc_port=9002,
                                 ms_port=ms_srv_port,
                                 http_srv_port=9001)
         client2.start()
         time.sleep(2)
-        client2.kill()
+        client1 = clients[0]
+        client1.kill()
         time.sleep(5)
 
         starting_game_found = False
@@ -63,6 +64,7 @@ class DisconnectBeforeGameStartTest(unittest.TestCase):
 
         ms_srv.kill()
         ms_srv.wait()
+        client2.kill()
         client2.wait()
         for client in clients:
             client.kill()
