@@ -102,7 +102,7 @@ func (this *Context) makeGameRoom() {
 	ml := make(MsNodeList, len(this.nodeList))
 	i := 0
 
-	for _, v := range this.nodeList {
+	for _, v := range this.nodeList { // v = MsNode
 		ml[i] = v
 		i++
 	}
@@ -143,6 +143,7 @@ func (this *Context) startGame() {
 	this.gameRoom = make([]*Node, 0)
 	this.nodeList = make(map[string]*MsNode)
 	this.connections = make(map[string]*rpc.Client)
+	this.clientNum = 0
 
 	// Reset the timer
 	this.gameTimer.Reset(sessionDelay)
@@ -197,10 +198,12 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 
 	this.checkConn() // Update NodeList and Connections
 
+	localLog("ES:", len(this.nodeList), "players")
+
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
 		this.NodeLock.Lock()
-		fmt.Println("Join: Starting Game")
+		localLog("Join: Starting Game")
 		this.makeGameRoom()
 		this.assignID()
 		this.startGame()
@@ -221,7 +224,7 @@ func endSession(this *Context) {
 		// At are at least 2 players in the room
 		if len(this.nodeList) >= leastPlayers {
 			this.NodeLock.Lock()
-			fmt.Println("ES: Starting Game")
+			localLog("ES: Starting Game")
 			this.makeGameRoom()
 			this.assignID()
 			this.startGame()
@@ -229,6 +232,7 @@ func endSession(this *Context) {
 			this.NodeLock.Unlock()
 		} else {
 			this.gameTimer.Reset(sessionDelay)
+
 			localLog("ES:", len(this.nodeList), "players waiting")
 		}
 
@@ -244,6 +248,7 @@ func AddNode(ctx *Context, nodeJoin *NodeJoin) {
 	// Add this client to the gameRoom & NodeList
 	node := &Node{Ip: nodeJoin.Ip}
 	msn := &MsNode{Node: node, Id: ctx.clientNum}
+	ctx.clientNum++
 	ctx.nodeList[nodeJoin.RpcIp] = msn
 
 	log.Println("AD: NodeList:", ctx.nodeList, ". Numb:", len(ctx.nodeList), "players.")
@@ -273,7 +278,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 7 * time.Second
+const sessionDelay time.Duration = 11 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const RpcMessage string = "NodeService.Message"
 const leastPlayers int = 2
@@ -292,7 +297,7 @@ func main() {
 		clientNum:   0,
 		roomLimit:   6,
 		gameRoom:    make([]*Node, 0),
-		gameTimer:   time.NewTimer(5 * time.Second),
+		gameTimer:   time.NewTimer(10 * time.Second),
 	}
 
 	// get arguments
