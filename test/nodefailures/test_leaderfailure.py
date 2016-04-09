@@ -42,12 +42,12 @@ class LeaderFailureTest(unittest.TestCase):
             for line in log_file:
                 if "Im a leader" in line:
                     found_leader_msg = True
-                    break
+                    continue
                 elif "Im a node" in line:
                     found_node_msg = True
                     if found_leader_msg:
                         found_node_msg_after_leader = True
-                    break
+                    continue
             self.assertTrue(found_node_msg,
                             "Client 2 should have been a node at some point")
             self.assertTrue(found_leader_msg,
@@ -64,12 +64,12 @@ class LeaderFailureTest(unittest.TestCase):
             for line in log_file:
                 if "Im a leader" in line:
                     found_leader_msg = True
-                    break
+                    continue
                 elif "Im a node" in line:
                     found_node_msg = True
                     if found_leader_msg:
                         found_node_msg_after_leader = True
-                    break
+                    continue
             self.assertTrue(found_node_msg,
                             "Client 3 should have been a node at some point")
             self.assertFalse(found_leader_msg,
