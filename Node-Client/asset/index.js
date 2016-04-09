@@ -36,6 +36,10 @@ const gSocket = io();
 // perform interactions such as resizing objects.
 const gCanvas = new fabric.StaticCanvas("mainCanvas");
 
+// Whether the game has already ended *for the local player* because we died or
+// we won.
+var gGameEnded = false;
+
 function handleKeyPress(event) {
   switch (event.keyCode) {
     case 87: // 'w'
@@ -104,9 +108,11 @@ function handleGameStateUpdate(state) {
     throw new Error("Passed game state that isn't an array");
   }
 
-  // If for some reason we haven't hidden the intro screen by now, force it to
-  // do so.
-  hideIntroScreen();
+  // If for some reason we didn't receive a "startGame" message at this point,
+  // just pretend we did so that the game can still be played.
+  if (!gGameEnded) {
+    startGame();
+  }
 
   // For now, we want to throw away the existing canvas and repaint everything
   // whenever we get an update. All of this is pretty inefficient, but probably
@@ -170,16 +176,26 @@ function startGame() {
  * Removes ability to control character.
  */
 function onPlayerDeath() {
-    window.onkeydown = null;
-    document.getElementById('message').innerHTML = '<h3 style="color:red">You are dead!</h3>';
+  if (gGameEnded) {
+    return;
+  }
+
+  gGameEnded = true;
+  window.onkeydown = null;
+  document.getElementById("deadMsg").style.display = "inline";
 }
 
 /**
  * Player won the game.
  */
 function onPlayerVictory() {
-     window.onkeydown = null;
-     document.getElementById('message').innerHTML = '<h3 style="color:red"><marquee>YOU WIN!</h3>';
+  if (gGameEnded) {
+    return;
+  }
+
+  gGameEnded = true;
+  window.onkeydown = null;
+  document.getElementById("winMsg").style.display = "inline";
 }
 
 function main() {

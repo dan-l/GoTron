@@ -9,27 +9,51 @@ import (
 
 var playerID string
 
-// TODO: This is a disgusting, terrible hack to allow the Node layer to
-//       broadcast state updates. We should replace this with something that's
-//       actually reasonable.
-var gSO socketio.Socket
+// Note: This variable should be treated as private to httpServer.go.
+var _gSO socketio.Socket
 
 // Starts the UI game screen.
 func startGameUI() {
-	if gSO != nil {
-		gSO.On("playerMove", func(playerMove map[string]string) {
-			direction, ok := playerMove["direction"]
-			if !ok {
-				// TODO Output error message somewhere
-				return
-			}
-
-			notifyPeersDirChanged(direction)
-		})
-
-		// Start the game.
-		gSO.Emit("startGame", nil)
+	if _gSO == nil {
+		return
 	}
+
+	_gSO.On("playerMove", func(playerMove map[string]string) {
+		direction, ok := playerMove["direction"]
+		if !ok {
+			log.Fatal("Received playerMove without direction")
+			return
+		}
+
+		notifyPeersDirChanged(direction)
+	})
+
+	// Start the game.
+	_gSO.Emit("startGame", nil)
+}
+
+func pushGameStateToJS(state [BOARD_SIZE][BOARD_SIZE]string) {
+	if _gSO == nil {
+		return
+	}
+
+	_gSO.Emit("gameStateUpdate", state)
+}
+
+func notifyPlayerDeathToJS() {
+	if _gSO == nil {
+		return
+	}
+
+	_gSO.Emit("playerDead")
+}
+
+func notifyPlayerVictoryToJS() {
+	if _gSO == nil {
+		return
+	}
+
+	_gSO.Emit("victory")
 }
 
 func httpServe() {
@@ -43,7 +67,7 @@ func httpServe() {
 	server.SetMaxConnection(1)
 	server.On("connection", func(so socketio.Socket) {
 		localLog("on connection")
-		gSO = so
+		_gSO = so
 	})
 	server.On("error", func(so socketio.Socket, err error) {
 		localLog("ERROR:", err)

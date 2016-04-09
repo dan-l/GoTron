@@ -32,3 +32,5 @@ _testmain.go
 
 *Log.txt
 *local.txt
+
+*.pyc
