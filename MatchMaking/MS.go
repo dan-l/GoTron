@@ -197,6 +197,8 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 
 	this.checkConn() // Update NodeList and Connections
 
+	localLog("ES:", len(this.nodeList), "players")
+
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
 		this.NodeLock.Lock()
