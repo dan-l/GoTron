@@ -197,10 +197,12 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 
 	this.checkConn() // Update NodeList and Connections
 
+	localLog("ES:", len(this.nodeList), "players")
+
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
 		this.NodeLock.Lock()
-		fmt.Println("Join: Starting Game")
+		localLog("Join: Starting Game")
 		this.makeGameRoom()
 		this.assignID()
 		this.startGame()
@@ -219,7 +221,7 @@ func endSession(this *Context) {
 		// At are at least 2 players in the room
 		if len(this.nodeList) >= leastPlayers {
 			this.NodeLock.Lock()
-			fmt.Println("ES: Starting Game")
+			localLog("ES: Starting Game")
 			this.makeGameRoom()
 			this.assignID()
 			this.startGame()
@@ -227,7 +229,7 @@ func endSession(this *Context) {
 			this.NodeLock.Unlock()
 		} else {
 			this.gameTimer.Reset(sessionDelay)
-			log.Println("ES:", len(this.nodeList), "players")
+			localLog("ES:", len(this.nodeList), "players")
 		}
 
 	}

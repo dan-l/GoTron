@@ -1,11 +1,14 @@
 #!/usr/bin/env python2
 
 import contextlib
-import multiprocessing
 import os
+import psutil
 import subprocess
+import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+NODE_CLIENT_DIR = os.path.join(os.path.dirname(_HERE), "Node-Client")
+MATCHMAKING_DIR = os.path.join(os.path.dirname(_HERE), "MatchMaking")
 
 @contextlib.contextmanager
 def use_cwd(new_cwd):
@@ -14,15 +17,31 @@ def use_cwd(new_cwd):
     yield
     os.chdir(original_cwd)
 
-class MatchMakingServer(object):
-    def __init__(self, port):
+class CommonBinary(object):
+    def __init__(self):
+        self._process = None
         self._bin_path = None
-        self._port = port
 
-        ms_dir = os.path.join(os.path.dirname(_HERE), "MatchMaking")
+    def kill(self):
+        try:
+            psutil.Process(self._process.pid).kill()
+        except psutil.NoSuchProcess:
+            # This method is best effort, so keep going even if the process
+            # can't be killed.
+            pass
+
+    def wait(self):
+        self._process.wait()
+
+class MatchMakingServer(CommonBinary):
+    def __init__(self, port):
+        super(MatchMakingServer, self).__init__()
+        self._port = port
+        self.local_log_filename = "127.0.0.1{}-local.txt".format(port)
+
         possible_bin_paths = [
-            os.path.join(ms_dir, "MS"),
-            os.path.join(ms_dir, "MS.exe"),
+            os.path.join(MATCHMAKING_DIR, "MS"),
+            os.path.join(MATCHMAKING_DIR, "MS.exe"),
         ]
         for possible_bin_path in possible_bin_paths:
             if not os.path.isfile(possible_bin_path):
@@ -33,26 +52,28 @@ class MatchMakingServer(object):
         if not self._bin_path:
             raise Exception("Couldn't find matchmaking binary to run")
 
-    def _start(self):
-        subprocess.call([self._bin_path, "localhost:{}".format(self._port)])
-
     def start(self):
-        ms_server = multiprocessing.Process(target=self._start)
-        ms_server.start()
+        # We force the working directory to be |MATCHMAKING_DIR| so tests can
+        # use a fixed path to log files.
+        with use_cwd(MATCHMAKING_DIR), open(os.devnull, "w") as dev_null:
+            self._process = subprocess.Popen([self._bin_path,
+                                              "localhost:{}".format(self._port)],
+                                             stdout=dev_null,
+                                             stderr=dev_null)
 
-class Client(object):
+class Client(CommonBinary):
     def __init__(self, node_port, node_rpc_port, ms_port, http_srv_port):
-        self._process = None
-        self._bin_path = None
+        super(Client, self).__init__()
         self._node_port = node_port
         self._node_rpc_port = node_rpc_port
         self._ms_port = ms_port
         self._http_srv_port = http_srv_port
+        self.local_log_filename = "localhost{}-local.txt".format(node_port)
+        self.govector_log_filename = "localhost{}-Log.txt".format(node_port)
 
-        nc_dir = os.path.join(os.path.dirname(_HERE), "Node-Client")
         possible_bin_paths = [
-            os.path.join(nc_dir, ".vendor", "bin", "Node-Client"),
-            os.path.join(nc_dir, "Node-Client.exe"),
+            os.path.join(NODE_CLIENT_DIR, ".vendor", "bin", "Node-Client"),
+            os.path.join(NODE_CLIENT_DIR, "Node-Client.exe"),
         ]
 
         env = os.environ
@@ -72,19 +93,31 @@ class Client(object):
         if not self._bin_path:
             raise Exception("Couldn't find client binary to run")
 
-    def _start(self):
+    def start(self):
         # Our HTML assets are only loaded if we run the binary from the correct
         # cwd.
-        with use_cwd(os.path.join(os.path.dirname(_HERE), "Node-Client")):
-            subprocess.call([self._bin_path,
-                             "localhost:{}".format(self._node_port),
-                             "localhost:{}".format(self._node_rpc_port),
-                             "localhost:{}".format(self._ms_port),
-                             "localhost:{}".format(self._http_srv_port)])
+        with use_cwd(NODE_CLIENT_DIR), open(os.devnull, "w") as dev_null:
+            self._process = subprocess.Popen([
+                self._bin_path,
+                "localhost:{}".format(self._node_port),
+                "localhost:{}".format(self._node_rpc_port),
+                "localhost:{}".format(self._ms_port),
+                "localhost:{}".format(self._http_srv_port)
+            ],
+            stdout=dev_null,
+            stderr=dev_null)
 
-    def start(self):
-        self._process = multiprocessing.Process(target=self._start)
-        self._process.start()
+def start_multiple_clients(ms_srv_port, client_count):
+    clients = []
+    for client_num in range(client_count):
+        node_port = 9999 - (client_num * 3)
+        node_rpc_port = 9998 - (client_num * 3)
+        http_srv_port = 9997 - (client_num * 3)
+        clients.append(Client(node_port=node_port,
+                              node_rpc_port=node_rpc_port,
+                              ms_port=ms_srv_port,
+                              http_srv_port=http_srv_port))
+        clients[-1].start()
+        time.sleep(0.5)
 
-    def kill(self):
-        self._process.terminate()
+    return clients

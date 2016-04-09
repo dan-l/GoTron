@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 
+import common
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _GOTRON_DIR = os.path.dirname(_HERE)
 
@@ -33,11 +35,11 @@ def main():
 
     if args.use_go_build:
         stages.append(BuildStage("Node Client (go build)",
-                                 os.path.join(_GOTRON_DIR, "Node-Client"),
+                                 common.NODE_CLIENT_DIR,
                                  ["go", "build"]))
     else:
         stages.append(BuildStage("Node Client (gopm)",
-                                 os.path.join(_GOTRON_DIR, "Node-Client"),
+                                 common.NODE_CLIENT_DIR,
                                  ["gopm", "install"]))
 
     for stage in stages:
