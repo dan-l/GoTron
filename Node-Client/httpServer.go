@@ -31,7 +31,7 @@ func startGameUI() {
 
 	// Start the game.
 	log.Println("Start game ", nodeId+" "+nodeAddr)
-	_gSO.Emit("startGame", nodeId+" "+nodeAddr)
+	_gSO.Emit("startGame", nodeId+" "+nodeAddr, myNode.Direction)
 }
 
 func pushGameStateToJS(state [BOARD_SIZE][BOARD_SIZE]string) {

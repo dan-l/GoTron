@@ -40,18 +40,27 @@ const gCanvas = new fabric.StaticCanvas("mainCanvas");
 // we won.
 var gGameEnded = false;
 
+// Keep track of current direction so we don't send redundant emits.
+var curDirection = 0;
+
 function handleKeyPress(event) {
+  if (event.keyCode === curDirection) return;
+
   switch (event.keyCode) {
     case 87: // 'w'
+      if (curDirection === 83) break; // 's' - opposite direction.
       gSocket.emit("playerMove", {"direction": Direction.UP});
       break;
     case 65: // 'a'
+      if (curDirection === 68) break; // 'd' - opposite direction.
       gSocket.emit("playerMove", {"direction": Direction.LEFT});
       break;
     case 83: // 's'
+      if (curDirection === 87) break; // 'w' - opposite direction.
       gSocket.emit("playerMove", {"direction": Direction.DOWN});
       break;
     case 68: // 'd'
+      if (curDirection === 65) break; // 'a' - opposite direction.
       gSocket.emit("playerMove", {"direction": Direction.RIGHT});
       break;
     default:
@@ -162,10 +171,21 @@ function handleGameStateUpdate(state) {
 /**
  * Starts the game when we are paired with enough players.
  */
-function startGame(info) {
+function startGame(info, direction) {
+  curDirection = getDirectionCode(direction);
   window.onkeydown = handleKeyPress;
   hideIntroScreen();
   document.getElementById('stats').innerHTML = '<h3 style="color:black">Player : ' + info + '</h3>';
+}
+
+/**
+ * Returns keyboard event code for the given direction.
+ */
+function getDirectionCode(direction) {
+     if (direction === Direction.UP) return 87;
+     if (direction === Direction.DOWN) return 83;
+     if (direction === Direction.RIGHT) return 68;
+     if (direction === Direction.LEFT) return 65;
 }
 
 /**
