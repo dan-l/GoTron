@@ -21,7 +21,7 @@ func initLogging() {
 	Logger = govec.Initialize(nodeAddr, logFileName)
 
 	localLogFile, err := os.Create(logFileName + "-local.txt")
-	checkErr(err)
+	checkErr(err, 24)
 	fileLogger = log.New(localLogFile, "", 0)
 }
 

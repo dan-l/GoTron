@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"net"
 	"net/rpc"
 	"strconv"
@@ -38,7 +37,7 @@ func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
 			"max number of supported players")
 	}
 
-	log.Println("Starting game with nodes: " + printNodes())
+	localLog("Starting game with nodes: " + printNodes())
 	findMyNode()
 	msService.Close()
 	startGame()   // in node.go, call when rpc is working
@@ -68,34 +67,36 @@ func printNodes() string {
 // This RPC function serves as a way for the Matchmaking service to send text to this node.
 func (nc *NodeService) Message(args *GameArgs, response *ValReply) error {
 	logReceive("Rpc Called Message", args.Log)
-	log.Println("Received message:" + response.Val)
+	localLog("Received message:" + response.Val)
 	return nil
 }
 
-func msRpcServce() {
+func msRpcServe() {
 	defer waitGroup.Done()
 
-	localAddr, e := net.ResolveTCPAddr("tcp", nodeRpcAddr)
-	checkErr(e)
+	localAddr, err := net.ResolveTCPAddr("tcp", nodeRpcAddr)
+	checkErr(err, 78)
 
+	nodeService := new(NodeService)
+	rpc.Register(nodeService)
+	nodeListener, err := net.Listen("tcp", localAddr.String())
+	checkErr(err, 83)
+
+	localLog("Listening for ms server at ", localAddr.String())
+	conn, err := nodeListener.Accept()
+	checkErr(err, 87)
+	go rpc.ServeConn(conn)
+}
+
+func msRpcDial() {
 	remoteAddr, e := net.ResolveTCPAddr("tcp", msServerAddr)
-	checkErr(e)
-
-	go func() {
-		nodeService := new(NodeService)
-		rpc.Register(nodeService)
-		nodeListener, e := net.Listen("tcp", localAddr.String())
-		checkErr(e)
-
-		log.Println("Listening for ms server at ", localAddr.String())
-		conn, _ := nodeListener.Accept()
-		rpc.ServeConn(conn)
-	}()
+	checkErr(e, 93)
 
 	msService, e = rpc.Dial("tcp", remoteAddr.String())
-	checkErr(e)
+	checkErr(e, 96)
 
 	var reply *ValReply = &ValReply{Val: ""}
 	log := logSend("Rpc Call Context.Join")
-	_ = msService.Call("Context.Join", &NodeJoin{RpcIp: nodeRpcAddr, Ip: nodeAddr, Log: log}, reply)
+	err := msService.Call("Context.Join", &NodeJoin{RpcIp: nodeRpcAddr, Ip: nodeAddr, Log: log}, reply)
+	checkErr(err, 101)
 }

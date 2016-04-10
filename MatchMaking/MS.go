@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -126,17 +125,12 @@ func (this *Context) assignID() {
 func (this *Context) startGame() {
 	fmt.Println("Connection Number:", len(this.connections))
 	for key, _ := range this.nodeList {
-		//fmt.Println("Trying to dial", key)
-		//fmt.Println("dialed", key)
 		var reply *ValReply = &ValReply{Val: ""}
-		//fmt.Println("calling startgame with connections = ", this.connections)
-		//fmt.Println("c is:", this.connections[key])
 		log := logSend("Rpc Call " + RpcStartGame)
 		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom, Log: log}, reply)
 		if e != nil {
 			fmt.Println("Failed to start", key)
 		}
-		//fmt.Println("startd")
 	}
 
 	// Clear the game room, nodelist, and connections
@@ -147,7 +141,6 @@ func (this *Context) startGame() {
 
 	// Reset the timer
 	this.gameTimer.Reset(sessionDelay)
-	//fmt.Println("DONE StartGame")
 }
 
 // Update NodeList and Connection based on disconnected clients
@@ -182,7 +175,6 @@ func (this *Context) checkConn() {
 			} else {
 				// Update connection for each client
 				fmt.Println("client: ", ClientIp, " is good.")
-				//fmt.Println("c is", c)
 				this.connections[ClientIp] = c
 			}
 		}
@@ -195,7 +187,7 @@ func (this *Context) checkConn() {
 func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	logReceive("AD: new node:", nodeJoin.Log)
 	AddNode(this, nodeJoin)
-
+	localLog("New node: ", nodeJoin.Ip)
 	this.checkConn() // Update NodeList and Connections
 
 	localLog("ES:", len(this.nodeList), "players")
@@ -297,7 +289,7 @@ func main() {
 		clientNum:   0,
 		roomLimit:   6,
 		gameRoom:    make([]*Node, 0),
-		gameTimer:   time.NewTimer(10 * time.Second),
+		gameTimer:   time.NewTimer(60 * time.Second),
 	}
 
 	// get arguments

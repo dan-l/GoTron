@@ -93,15 +93,15 @@ func main() {
 	nodeAddr, nodeRpcAddr, msServerAddr = os.Args[1], os.Args[2], os.Args[3]
 
 	httpServerTcpAddr, err := net.ResolveTCPAddr("tcp", os.Args[4])
-	checkErr(err)
+	checkErr(err, 96)
 	httpServerAddr = httpServerTcpAddr.String()
 
 	log.Println(nodeAddr, nodeRpcAddr, msServerAddr, httpServerAddr)
 	initLogging()
 
 	waitGroup.Add(2) // Add internal process.
-	go msRpcServce()
 	go httpServe()
+	go msRpcServe()
 	waitGroup.Wait() // Wait until processes are done.
 }
 
@@ -545,7 +545,7 @@ func sendPacketsToPeers(logMsg string, message *Message) {
 			log := logSend("Sending: " + logMsg + " [to: " + node.Id + " at ip " + node.Ip + "]")
 			message.Log = log
 			nodeJson, err := json.Marshal(message)
-			checkErr(err)
+			checkErr(err, 548)
 			sendUDPPacket(node.Ip, nodeJson)
 		}
 	}
@@ -556,18 +556,18 @@ func sendUDPPacket(ip string, data []byte) {
 	// TODO a random port is picked since
 	// we can't listen and read at the same time
 	udpConn, err := net.Dial("udp", ip)
-	checkErr(err)
+	checkErr(err, 559)
 	defer udpConn.Close()
 
 	_, err = udpConn.Write(data)
-	checkErr(err)
+	checkErr(err, 563)
 }
 
 func processPacket(buf []byte, addr *net.UDPAddr, n int) {
 	var message Message
 	var node Node
 	err := json.Unmarshal(buf[0:n], &message)
-	checkErr(err)
+	checkErr(err, 570)
 	node = message.Node
 
 	logReceive("Received packet from "+addr.String()+": "+string(buf[0:n]), message.Log)
@@ -601,7 +601,7 @@ func processPacket(buf []byte, addr *net.UDPAddr, n int) {
 				n.IsAlive = false
 				localLog("LEADER SENT: ", n.Id, " IS DEAD")
 				aliveNodes = aliveNodes - 1
-				log.Println("**** DEATH REPORT *** size is now ", strconv.Itoa(aliveNodes))
+				localLog("**** DEATH REPORT *** size is now ", strconv.Itoa(aliveNodes))
 				board[n.CurrLoc.Y][n.CurrLoc.X] = getPlayerState(n.Id)
 
 				// Check if its me.
@@ -639,18 +639,18 @@ func processPacket(buf []byte, addr *net.UDPAddr, n int) {
 
 func listenUDPPacket() {
 	localAddr, err := net.ResolveUDPAddr("udp", nodeAddr)
-	checkErr(err)
+	checkErr(err, 642)
 	udpConn, err := net.ListenUDP("udp", localAddr)
-	checkErr(err)
+	checkErr(err, 644)
 	err = udpConn.SetReadBuffer(9000)
-	checkErr(err)
+	checkErr(err, 646)
 	defer udpConn.Close()
 
 	buf := make([]byte, 1024)
 
 	for {
 		n, addr, err := udpConn.ReadFromUDP(buf)
-		checkErr(err)
+		checkErr(err, 653)
 		go processPacket(buf, addr, n)
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -784,9 +784,9 @@ func getNode(id string) *Node {
 }
 
 // Error checking. Exit program when error occurs.
-func checkErr(err error) {
+func checkErr(err error, lineNum int) {
 	if err != nil {
-		localLog("error:", err)
+		localLog("line ", strconv.Itoa(lineNum)+", error:", err)
 		os.Exit(1)
 	}
 }

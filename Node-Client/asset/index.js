@@ -180,11 +180,11 @@ function handleGameStateUpdate(state) {
 /**
  * Starts the game when we are paired with enough players.
  */
-function startGame(info, direction) {
+function startGame(id, addr, direction) {
   curDirection = getDirectionCode(direction);
   window.onkeydown = handleKeyPress;
   hideIntroScreen();
-  document.getElementById('stats').innerHTML = '<h3 style="color:black">Player : ' + info + '</h3>';
+  document.getElementById('stats').innerHTML = '<h3 style="color:' + PLAYER_CODE_TO_COLOUR[id]  + '">Player : ' + id + ' ' + addr  + '</h3>';
 }
 
 /**
