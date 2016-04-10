@@ -206,13 +206,14 @@ func UpdateBoard() {
 	localLog("Received gameHistory from Leader")
 
 	// Clear everything on the board except our head
-	for id, v := range nodeHistory {
-		for i, e := range v {
-			if i != len(v)-1 {
-				if i != 0 || nodeId != id {
-					board[e.Y][e.X] = ""
-				}
-			}
+	for _, v := range nodeHistory {
+		for _, e := range v {
+			// if i != len(v)-1 && i != 0 {
+			// if i != 0 {
+			// if i != 0 || nodeId != id {
+			board[e.Y][e.X] = ""
+			// }
+			// }
 		}
 	}
 	// Color board based on Leader's hitory
@@ -221,7 +222,8 @@ func UpdateBoard() {
 		playerIndex := string(buf[1])
 
 		localLog(id)
-		for _, p := range nodeHistory[id] {
+		// for _, p := range nodeHistory[id] {
+		for _, p := range gameHistory[id] {
 			localLog(*p)
 		}
 
@@ -516,9 +518,9 @@ func contains(x int, y int, list []*Pos) bool {
 // LEADER: Send game history of at most 5 previous ticks to all nodes.
 func enforceGameState() {
 	for {
-		if isPlaying == false {
-			return
-		}
+		// if isPlaying == false {
+		// 	return
+		// }
 		time.Sleep(enforceGameStateRate)
 		if !isLeader() {
 			return
