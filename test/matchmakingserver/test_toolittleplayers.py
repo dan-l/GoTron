@@ -11,6 +11,9 @@ sys.path.append(os.path.dirname(_HERE))
 import common
 
 class TooLittlePlayersTest(unittest.TestCase):
+    def tearDown(self):
+        common.kill_remaining_processes()
+
     def test_too_little_players(self):
         """c1 connects to the matchmaking server. Game doesn't start and we see
         one player waiting.
@@ -49,4 +52,3 @@ class TooLittlePlayersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    print "Please issue Ctrl-C to try and kill any zombie processes."

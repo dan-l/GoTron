@@ -11,6 +11,9 @@ sys.path.append(os.path.dirname(_HERE))
 import common
 
 class StartByMaxPlayersTest(unittest.TestCase):
+    def tearDown(self):
+        common.kill_remaining_processes()
+
     def test_start_by_max_players(self):
         """c1,..., c6 connect to the matchmaking server. The matchmaking server
         detects that the room size limit is reached and the game starts.
@@ -86,4 +89,3 @@ class StartByMaxPlayersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    print "Please issue Ctrl-C to try and kill any zombie processes."

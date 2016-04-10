@@ -121,3 +121,12 @@ def start_multiple_clients(ms_srv_port, client_count):
         time.sleep(0.5)
 
     return clients
+
+def kill_remaining_processes():
+    """Attempts to kill any remaining client or MS processes."""
+    for process in psutil.process_iter():
+        process_name = process.name()
+        if "Node-Client" in process_name or "MS" in process_name:
+            print "Killing stray process '{}'".format(process_name)
+            process.kill()
+ 

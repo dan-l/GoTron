@@ -11,6 +11,9 @@ sys.path.append(os.path.dirname(_HERE))
 import common
 
 class ConnectDisconnectTest(unittest.TestCase):
+    def tearDown(self):
+        common.kill_remaining_processes()
+
     def test_connect_disconnect(self):
         """c1 connects to the matchmaking server then disconnects. The game
         doesn't start.
@@ -51,4 +54,3 @@ class ConnectDisconnectTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    print "Please issue Ctrl-C to try and kill any zombie processes."
