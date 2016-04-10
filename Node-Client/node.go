@@ -206,13 +206,9 @@ func UpdateBoard() {
 	localLog("Received gameHistory from Leader")
 
 	// Clear everything on the board except our head
-	for id, v := range nodeHistory {
-		for i, e := range v {
-			if i != len(v)-1 {
-				if i != 0 || nodeId != id {
-					board[e.Y][e.X] = ""
-				}
-			}
+	for _, v := range nodeHistory {
+		for _, e := range v {
+			board[e.Y][e.X] = ""
 		}
 	}
 	// Color board based on Leader's hitory
@@ -221,7 +217,8 @@ func UpdateBoard() {
 		playerIndex := string(buf[1])
 
 		localLog(id)
-		for _, p := range nodeHistory[id] {
+		// for _, p := range nodeHistory[id] {
+		for _, p := range gameHistory[id] {
 			localLog(*p)
 		}
 
@@ -229,21 +226,10 @@ func UpdateBoard() {
 		for i, pos := range gameHistory[id] {
 			if i == 0 {
 				// Check if History's head is the same as our head
-				if nodeId == id {
-					if myNode.CurrLoc.X == pos.X && myNode.CurrLoc.Y == pos.Y {
-						board[pos.Y][pos.X] = getPlayerState(id)
-						myNode.CurrLoc.X = pos.X
-						myNode.CurrLoc.Y = pos.Y
-					} else {
-						board[pos.Y][pos.X] = "t" + playerIndex
-					}
-				} else {
-					board[pos.Y][pos.X] = getPlayerState(id)
-					peerNode := getNode(id)
-					peerNode.CurrLoc.X = pos.X
-					peerNode.CurrLoc.Y = pos.Y
-
-				}
+				board[pos.Y][pos.X] = getPlayerState(id)
+				peerNode := getNode(id)
+				peerNode.CurrLoc.X = pos.X
+				peerNode.CurrLoc.Y = pos.Y
 			} else {
 				board[pos.Y][pos.X] = "t" + playerIndex
 			}
@@ -516,9 +502,9 @@ func contains(x int, y int, list []*Pos) bool {
 // LEADER: Send game history of at most 5 previous ticks to all nodes.
 func enforceGameState() {
 	for {
-		if isPlaying == false {
-			return
-		}
+		// if isPlaying == false {
+		// 	return
+		// }
 		time.Sleep(enforceGameStateRate)
 		if !isLeader() {
 			return
