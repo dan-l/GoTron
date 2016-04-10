@@ -208,12 +208,7 @@ func UpdateBoard() {
 	// Clear everything on the board except our head
 	for _, v := range nodeHistory {
 		for _, e := range v {
-			// if i != len(v)-1 && i != 0 {
-			// if i != 0 {
-			// if i != 0 || nodeId != id {
 			board[e.Y][e.X] = ""
-			// }
-			// }
 		}
 	}
 	// Color board based on Leader's hitory
@@ -231,21 +226,10 @@ func UpdateBoard() {
 		for i, pos := range gameHistory[id] {
 			if i == 0 {
 				// Check if History's head is the same as our head
-				if nodeId == id {
-					if myNode.CurrLoc.X == pos.X && myNode.CurrLoc.Y == pos.Y {
-						board[pos.Y][pos.X] = getPlayerState(id)
-						myNode.CurrLoc.X = pos.X
-						myNode.CurrLoc.Y = pos.Y
-					} else {
-						board[pos.Y][pos.X] = "t" + playerIndex
-					}
-				} else {
-					board[pos.Y][pos.X] = getPlayerState(id)
-					peerNode := getNode(id)
-					peerNode.CurrLoc.X = pos.X
-					peerNode.CurrLoc.Y = pos.Y
-
-				}
+				board[pos.Y][pos.X] = getPlayerState(id)
+				peerNode := getNode(id)
+				peerNode.CurrLoc.X = pos.X
+				peerNode.CurrLoc.Y = pos.Y
 			} else {
 				board[pos.Y][pos.X] = "t" + playerIndex
 			}
