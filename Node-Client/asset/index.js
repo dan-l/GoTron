@@ -9,6 +9,11 @@ const Direction = {
   RIGHT: "R",
 };
 
+const W = 87;
+const A = 65;
+const S = 83;
+const D = 68;
+
 // Maps player codes constants such as "p1" and "t1" to a colour.
 const PLAYER_CODE_TO_COLOUR = {
   "d1": "red",
@@ -47,20 +52,24 @@ function handleKeyPress(event) {
   if (event.keyCode === curDirection) return;
 
   switch (event.keyCode) {
-    case 87: // 'w'
-      if (curDirection === 83) break; // 's' - opposite direction.
+    case W:
+      if (curDirection === S) break;
+      curDirection = W;
       gSocket.emit("playerMove", {"direction": Direction.UP});
       break;
-    case 65: // 'a'
-      if (curDirection === 68) break; // 'd' - opposite direction.
+    case A:
+      if (curDirection === D) break;
+      curDirection = A;
       gSocket.emit("playerMove", {"direction": Direction.LEFT});
       break;
-    case 83: // 's'
-      if (curDirection === 87) break; // 'w' - opposite direction.
+    case S:
+      if (curDirection === W) break;
+      curDirection = S;
       gSocket.emit("playerMove", {"direction": Direction.DOWN});
       break;
-    case 68: // 'd'
-      if (curDirection === 65) break; // 'a' - opposite direction.
+    case D:
+      if (curDirection === A) break;
+      curDirection = D;
       gSocket.emit("playerMove", {"direction": Direction.RIGHT});
       break;
     default:
@@ -182,10 +191,10 @@ function startGame(info, direction) {
  * Returns keyboard event code for the given direction.
  */
 function getDirectionCode(direction) {
-     if (direction === Direction.UP) return 87;
-     if (direction === Direction.DOWN) return 83;
-     if (direction === Direction.RIGHT) return 68;
-     if (direction === Direction.LEFT) return 65;
+     if (direction === Direction.UP) return W;
+     if (direction === Direction.DOWN) return S;
+     if (direction === Direction.RIGHT) return D;
+     if (direction === Direction.LEFT) return A;
 }
 
 /**
