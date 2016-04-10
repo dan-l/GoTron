@@ -11,6 +11,9 @@ sys.path.append(os.path.dirname(_HERE))
 import common
 
 class MultiClientFailureTest(unittest.TestCase):
+    def tearDown(self):
+        common.kill_remaining_processes()
+
     def test_multi_client_failure(self):
         """A leader client (1) is started followed by two normal clients (2, 3, 4).
         2 and 3 fail. 1 should stay as leader and broadcast that 2 and 3 failed to
@@ -80,4 +83,3 @@ class MultiClientFailureTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    print "Please issue Ctrl-C to try and kill any zombie processes."

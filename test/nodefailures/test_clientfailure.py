@@ -11,6 +11,9 @@ sys.path.append(os.path.dirname(_HERE))
 import common
 
 class ClientFailureTest(unittest.TestCase):
+    def tearDown(self):
+        common.kill_remaining_processes()
+
     def test_client_failure(self):
         """A leader client (1) is started followed by two normal clients (2, 3).
         2 fails, and the leader should inform all other clients that 2 has
@@ -78,4 +81,3 @@ class ClientFailureTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    print "Please issue Ctrl-C to try and kill any zombie processes."

@@ -11,6 +11,9 @@ sys.path.append(os.path.dirname(_HERE))
 import common
 
 class StartByTimeoutTest(unittest.TestCase):
+    def tearDown(self):
+        common.kill_remaining_processes()
+
     def test_start_by_timeout(self):
         """c1 connects to the matchmaking server. Then c2 connects to the
         matchmaking server. When the countdown timer expires, the game starts.
@@ -68,4 +71,3 @@ class StartByTimeoutTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    print "Please issue Ctrl-C to try and kill any zombie processes."
