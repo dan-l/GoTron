@@ -38,6 +38,8 @@ class MatchMakingServer(CommonBinary):
         super(MatchMakingServer, self).__init__()
         self._port = port
         self.local_log_filename = "127.0.0.1{}-local.txt".format(port)
+        self.govector_log_path = os.path.join(
+            MATCHMAKING_DIR, "127.0.0.1{}-Log.txt".format(port))
 
         possible_bin_paths = [
             os.path.join(MATCHMAKING_DIR, "MS"),
@@ -69,7 +71,11 @@ class Client(CommonBinary):
         self._ms_port = ms_port
         self._http_srv_port = http_srv_port
         self.local_log_filename = "localhost{}-local.txt".format(node_port)
+        # TODO: govector_log_filename should be replaced with govector_log_path
+        #       everywhere.
         self.govector_log_filename = "localhost{}-Log.txt".format(node_port)
+        self.govector_log_path = os.path.join(
+            NODE_CLIENT_DIR, self.govector_log_filename)
 
         possible_bin_paths = [
             os.path.join(NODE_CLIENT_DIR, ".vendor", "bin", "Node-Client"),
@@ -129,4 +135,3 @@ def kill_remaining_processes():
         if "Node-Client" in process_name or "MS" in process_name:
             print "Killing stray process '{}'".format(process_name)
             process.kill()
- 
