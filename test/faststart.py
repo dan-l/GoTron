@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
 import argparse
-import time
+import signal
 
 import common
 
@@ -13,13 +13,19 @@ def main():
                         help="Number of clients to launch")
     args = parser.parse_args()
 
+    def sigint_handler(signum, frame):
+        _ = signum, frame
+        common.kill_remaining_processes()
+
+    # Catch Ctrl-C interrupts so we can (try to) kill our spawned processes.
+    signal.signal(signal.SIGINT, sigint_handler)
+
     ms_srv = common.MatchMakingServer(2222)
     ms_srv.start()
-    time.sleep(1)
+    common.sleep(2)
 
     clients = common.start_multiple_clients(ms_srv.port, args.client_count)
 
-    # Wait for the processes to end so that Ctrl-C kills all processes at once.
     ms_srv.wait()
     for client in clients:
         client.wait()
