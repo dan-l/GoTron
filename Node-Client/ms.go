@@ -1,5 +1,8 @@
 package main
 
+// This file implements communication with a matchmaking server on the client
+// side.
+
 import (
 	"errors"
 	"net"

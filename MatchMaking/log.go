@@ -1,5 +1,7 @@
 package main
 
+// This file provides utilities for logging.
+
 import (
 	"github.com/arcaneiceman/GoVector/govec"
 	"log"

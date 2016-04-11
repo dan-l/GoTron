@@ -1,14 +1,14 @@
 package main
 
+// This file was used for testing the Matchmaking server implementation. It may
+// or may not work with the current implementation.
+
 import (
-	//"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/rpc"
 	"os"
-	//"sync"
-	//"time"
 )
 
 const RpcJoin string = "Context.Join"

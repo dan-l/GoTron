@@ -1,5 +1,8 @@
 package main
 
+// This file represents the Node layer of a client, and hence implements core
+// game state logic.
+
 import (
 	"encoding/json"
 	"fmt"

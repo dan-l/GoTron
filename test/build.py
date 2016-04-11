@@ -1,35 +1,36 @@
 #!/usr/bin/env python2
 
 import argparse
-import os
 import subprocess
 import sys
 
 import common
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_GOTRON_DIR = os.path.dirname(_HERE)
-
 class BuildStage(object):
     def __init__(self, name, working_dir, command_and_args):
         self.name = name
-        self.working_dir = working_dir
-        self.command_and_args = command_and_args
+        self._working_dir = working_dir
+        self._command_and_args = command_and_args
 
     def run(self):
         print "Executing stage '{}'".format(self.name)
-        os.chdir(self.working_dir)
-        return subprocess.call(self.command_and_args)
+        with common.use_cwd(self._working_dir):
+            return subprocess.call(self._command_and_args)
 
 def main():
-    parser = argparse.ArgumentParser()
+    description = "Quickly builds both the MS and client binaries."
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--use-go-build", dest="use_go_build",
-                        action="store_true")
+                        action="store_true",
+                        help="Use |go build| instead of gopm for builing "
+                             "the client binary.")
     args = parser.parse_args()
+
+    print "Reminder: Pass the --use-go-build flag if gopm is not being used."
 
     stages = [
         BuildStage("MS Server",
-                   os.path.join(_GOTRON_DIR, "MatchMaking"),
+                   common.MATCHMAKING_DIR,
                    ["go", "build", "MS.go", "log.go"]),
     ]
 
@@ -43,8 +44,7 @@ def main():
                                  ["gopm", "install"]))
 
     for stage in stages:
-        exit_code = stage.run()
-        if exit_code != 0:
+        if stage.run() != 0:
             return "Stage '{}' failed".format(stage.name)
 
     print "Successfully executed all build stages"

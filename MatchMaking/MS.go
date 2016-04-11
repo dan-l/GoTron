@@ -1,5 +1,7 @@
 package main
 
+// This file implements a matchmaking server.
+
 import (
 	"fmt"
 	"log"
