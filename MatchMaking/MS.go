@@ -79,6 +79,7 @@ type MsNode struct {
 
 type MsNodeList []*MsNode
 
+// Implementation of sort.Interface to allow sort.Sort(MsNodeList) to work.
 func (ml MsNodeList) Swap(i, j int)      { ml[i], ml[j] = ml[j], ml[i] }
 func (ml MsNodeList) Len() int           { return len(ml) }
 func (ml MsNodeList) Less(i, j int) bool { return ml[i].Id < ml[j].Id }
@@ -181,7 +182,6 @@ func (this *Context) checkConn() {
 				this.connections[ClientIp] = c
 			}
 		}
-
 	}
 	this.NodeLock.Unlock()
 }
@@ -213,7 +213,6 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 func endSession(this *Context) {
 	defer waitGroup.Done()
 	for _ = range this.gameTimer.C {
-
 		this.checkConn() // Update NodeList and Connections
 
 		// At are at least 2 players in the room
@@ -227,10 +226,8 @@ func endSession(this *Context) {
 			this.NodeLock.Unlock()
 		} else {
 			this.gameTimer.Reset(SESSION_DELAY)
-
 			localLog("ES:", len(this.nodeList), "players waiting")
 		}
-
 	}
 }
 

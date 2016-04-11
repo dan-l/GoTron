@@ -767,7 +767,7 @@ func getNode(id string) *Node {
 // Error checking. Exit program when error occurs.
 func checkErr(err error, lineNum int) {
 	if err != nil {
-		localLog("line ", strconv.Itoa(lineNum)+", error:", err)
+		localLog("line ", lineNum, " error:", err)
 		os.Exit(1)
 	}
 }

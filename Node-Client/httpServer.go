@@ -1,5 +1,7 @@
 package main
 
+// This file implements the HTTP server portion of the GUI layer.
+
 import (
 	"github.com/googollee/go-socket.io"
 	"github.com/pkg/browser"
@@ -7,8 +9,6 @@ import (
 	"net"
 	"net/http"
 )
-
-var playerID string
 
 // Note: This variable should be treated as private to httpServer.go.
 var _gSO socketio.Socket
@@ -61,6 +61,7 @@ func notifyPlayerVictoryToJS() {
 	_gSO.Emit("playerVictory")
 }
 
+// Starts the HTTP server.
 func httpServe() {
 	defer waitGroup.Done()
 	server, err := socketio.NewServer(nil)

@@ -42,7 +42,12 @@ func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
 
 	localLog("Starting game with nodes: " + printNodes())
 	findMyNode()
+
+	if msService == nil {
+		return errors.New("msService somehow still not setup")
+	}
 	msService.Close()
+
 	startGame()   // in node.go, call when rpc is working
 	startGameUI() // in httpServer.go, transition to game screen on the client.
 	return nil
