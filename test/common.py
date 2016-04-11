@@ -145,11 +145,19 @@ def start_multiple_clients(ms_srv_port, client_count):
 def kill_remaining_processes():
     """Attempts to kill any remaining client or MS processes."""
     for process in psutil.process_iter():
-        process_name = process.name()
-        if (process_name == "Node-Client" or process_name == "Node-Client.exe" or
-            process_name == "MS" or process_name == "MS.exe"):
-            print "Killing stray process '{}'".format(process_name)
-            process.kill()
+        try:
+            process_name = process.name()
+            if (process_name == "Node-Client" or
+                process_name == "Node-Client.exe" or
+                process_name == "MS" or
+                process_name == "MS.exe"):
+                    print "Killing stray process '{}'".format(process_name)
+                    process.kill()
+        except psutil.ZombieProcess:
+            # On OSX, Calling |process.name()| above can raise an exception on
+            # what appears to be a disk daemon. We don't intend to kill such a
+            # process anyways, so we suppress the exception here.
+            pass
 
 def sleep(timeout):
     """A wrapper around time.sleep() that just prints how long a sleep will be
