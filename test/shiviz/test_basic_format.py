@@ -28,14 +28,18 @@ class BasicFormatTest(common.TestCase):
         # This regex is supposed to match lines like:
         #   localhost:9990 {"localhost:9990":2}
         #   127.0.0.1:2222 {"127.0.0.1:2222":2, "localhost:9999":2}
-        # Lines in this format are consumable by ShiViz. The () brackets allow
-        # the localhost:9990 part above to be separated out.
-        govector_log_regex = re.compile(r"(.*:\d{4,5}?) {.*}")
+        # Lines in this format are consumable by ShiViz.
+        govector_log_regex = re.compile(
+            r'(.*:\d{4,5}?) {(".*:\d{4,5}?":\d*)(, ".*:\d{4,5}?":\d*)*}')
         with open(ms_srv.govector_log_path) as log_file:
             lines = log_file.readlines()
             for line in lines[0::2]:
-                self.assertIsNotNone(govector_log_regex.match(line),
+                match = govector_log_regex.match(line)
+                self.assertIsNotNone(match,
                                      "Line '{}' should be ShiViz compat".format(line))
+                self.assertEquals(match.group(1),
+                                  "127.0.0.1:{}".format(ms_srv.port),
+                                  "Sender should be the MS")
             for line in lines[1::2]:
                 self.assertIsNone(govector_log_regex.match(line),
                                   "Line '{}' should be regular text".format(line))
