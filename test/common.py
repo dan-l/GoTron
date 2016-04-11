@@ -34,9 +34,12 @@ class CommonBinary(object):
         self._process.wait()
 
 class MatchMakingServer(CommonBinary):
+    # The number of seconds the game start timer expires.
+    GAME_START_TIMEOUT = 60
+
     def __init__(self, port):
         super(MatchMakingServer, self).__init__()
-        self._port = port
+        self.port = port
         self.local_log_filename = "127.0.0.1{}-local.txt".format(port)
         self.govector_log_path = os.path.join(
             MATCHMAKING_DIR, "127.0.0.1{}-Log.txt".format(port))
@@ -59,7 +62,7 @@ class MatchMakingServer(CommonBinary):
         # use a fixed path to log files.
         with use_cwd(MATCHMAKING_DIR), open(os.devnull, "w") as dev_null:
             self._process = subprocess.Popen([self._bin_path,
-                                              "localhost:{}".format(self._port)],
+                                              "localhost:{}".format(self.port)],
                                              stdout=dev_null,
                                              stderr=dev_null)
 
@@ -90,10 +93,8 @@ class Client(CommonBinary):
 
         for possible_bin_path in possible_bin_paths:
             if not os.path.isfile(possible_bin_path):
-                print "client not at " + possible_bin_path
                 continue
             self._bin_path = possible_bin_path
-            print "client is at " + self._bin_path
             break
 
         if not self._bin_path:
@@ -132,6 +133,7 @@ def kill_remaining_processes():
     """Attempts to kill any remaining client or MS processes."""
     for process in psutil.process_iter():
         process_name = process.name()
-        if "Node-Client" in process_name or "MS" in process_name:
+        if (process_name == "Node-Client" or process_name == "Node-Client.exe" or
+            process_name == "MS" or process_name == "MS.exe"):
             print "Killing stray process '{}'".format(process_name)
             process.kill()
