@@ -3,7 +3,6 @@
 import os
 import re
 import sys
-import time
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -22,12 +21,12 @@ class BasicFormatTest(unittest.TestCase):
         """
         ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
-        time.sleep(2)
+        common.sleep(2)
 
         clients = common.start_multiple_clients(ms_srv.port, 2)
 
         # Wait for a bit to make sure a game starts and is played for a while.
-        time.sleep(10)
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT * 1.1)
 
         # This regex is supposed to match lines like:
         #   localhost:9990 {"localhost:9990":2}

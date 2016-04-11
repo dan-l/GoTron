@@ -2,7 +2,6 @@
 
 import os
 import sys
-import time
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -20,12 +19,11 @@ class TooLittlePlayersTest(unittest.TestCase):
         """
         ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
-        time.sleep(2)
+        common.sleep(2)
 
         _ = common.start_multiple_clients(ms_srv.port, 1)
 
-        print "Sleeping for more than the MS server timeout"
-        time.sleep(14)
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT)
 
         starting_game_found = False
         player_count_found = False

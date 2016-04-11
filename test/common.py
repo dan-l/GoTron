@@ -136,3 +136,11 @@ def kill_remaining_processes():
             process_name == "MS" or process_name == "MS.exe"):
             print "Killing stray process '{}'".format(process_name)
             process.kill()
+
+def sleep(timeout):
+    """A wrapper around time.sleep() that just prints how long a sleep will be
+    so we know when a test is working but just sleeping.
+    """
+    print "Sleeping for {}s".format(timeout)
+    time.sleep(timeout)
+    print "Done sleeping"

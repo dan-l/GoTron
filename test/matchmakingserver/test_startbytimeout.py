@@ -2,7 +2,6 @@
 
 import os
 import sys
-import time
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -20,21 +19,20 @@ class StartByTimeoutTest(unittest.TestCase):
         """
         ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
-        time.sleep(2)
+        common.sleep(2)
 
         _ = common.start_multiple_clients(ms_srv.port, 1)
 
         # Wait for a while to make sure MS server logs that one client is
         # connected.
-        time.sleep(7)
+        common.sleep(7)
 
-        # Start client 2, then disconnect client 1 by killing client 1.
         client2 = common.Client(node_port=9003,
                                 node_rpc_port=9002,
                                 ms_port=ms_srv.port,
                                 http_srv_port=9001)
         client2.start()
-        time.sleep(10)
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT)
 
         starting_game_found = False
         one_player_found = False

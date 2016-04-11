@@ -2,7 +2,6 @@
 
 import os
 import sys
-import time
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -21,19 +20,19 @@ class ClientFailureTest(unittest.TestCase):
         """
         ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
-        time.sleep(2)
+        common.sleep(2)
 
         clients = common.start_multiple_clients(ms_srv.port, 3)
 
-        time.sleep(1)
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT)
 
         # Kill client 2.
-        time.sleep(2)
+        common.sleep(2)
         client2 = clients[1]
         client2.kill()
 
         # Wait for (unexpected, but potential) leader re-election to occur.
-        time.sleep(8)
+        common.sleep(8)
 
         leader = clients[0]
         with open(leader.local_log_path) as log_file:
