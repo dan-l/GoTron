@@ -431,8 +431,8 @@ func cacheLocation() {
 	mutex.Unlock()
 }
 
-// LEADER: Build a history of last 5 moves for node on the board.
-func collectLast5Moves() {
+// LEADER: Build a history of last 7 moves for node on the board.
+func collectLast7Moves() {
 	// Collect the state of nodes on the board as the 'TRUE' state.
 	for _, node := range nodes {
 		// Clear the list.
@@ -445,7 +445,7 @@ func collectLast5Moves() {
 		xPos := node.CurrLoc.X
 		yPos := node.CurrLoc.Y
 		trail := "t" + string(node.Id[len(node.Id)-1])
-		for i < 5 {
+		for i < 7 {
 			p := findTrail(xPos, yPos, trail, gameHistory[node.Id])
 			if p != nil {
 				gameHistory[node.Id] = append(gameHistory[node.Id], p)
