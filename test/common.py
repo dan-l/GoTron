@@ -5,6 +5,7 @@ import os
 import psutil
 import subprocess
 import time
+import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 NODE_CLIENT_DIR = os.path.join(os.path.dirname(_HERE), "Node-Client")
@@ -112,6 +113,15 @@ class Client(CommonBinary):
             ],
             stdout=dev_null,
             stderr=dev_null)
+
+class TestCase(unittest.TestCase):
+    """A wrapper to avoid the need to constantly duplicate common test case code.
+    """
+    def setUp(self):
+        kill_remaining_processes()
+
+    def tearDown(self):
+        kill_remaining_processes()
 
 def start_multiple_clients(ms_srv_port, client_count):
     clients = []

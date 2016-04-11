@@ -9,10 +9,7 @@ sys.path.append(os.path.dirname(_HERE))
 
 import common
 
-class LeaderFailureTest(unittest.TestCase):
-    def tearDown(self):
-        common.kill_remaining_processes()
-
+class LeaderFailureTest(common.TestCase):
     def test_leader_failure(self):
         """A leader client (1) is started followed by two normal clients (2, 3).
         The leader fails. 2 should become the new leader, and 3 should stay as a

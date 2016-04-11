@@ -9,10 +9,7 @@ sys.path.append(os.path.dirname(_HERE))
 
 import common
 
-class TooLittlePlayersTest(unittest.TestCase):
-    def tearDown(self):
-        common.kill_remaining_processes()
-
+class TooLittlePlayersTest(common.TestCase):
     def test_too_little_players(self):
         """c1 connects to the matchmaking server. Game doesn't start and we see
         one player waiting.

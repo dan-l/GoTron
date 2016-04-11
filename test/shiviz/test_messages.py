@@ -2,7 +2,6 @@
 
 import os
 import sys
-import time
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -10,22 +9,19 @@ sys.path.append(os.path.dirname(_HERE))
 
 import common
 
-class BasicTest(unittest.TestCase):
-    def tearDown(self):
-        common.kill_remaining_processes()
-
+class BasicTest(common.TestCase):
     def test_basic(self):
         """Play a game. All communication between nodes, and with the
         matchmaking server should be logged in a file.
         """
         ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
-        time.sleep(2)
+        common.sleep(2)
 
         clients = common.start_multiple_clients(ms_srv.port, 2)
 
         # Wait for a bit to make sure a game starts and is played for a while.
-        time.sleep(common.MatchMakingServer.GAME_START_TIMEOUT * 1.1)
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT * 1.1)
 
         found_join_msg = False
         found_start_game_msg = False

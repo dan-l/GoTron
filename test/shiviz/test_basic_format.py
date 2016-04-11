@@ -10,10 +10,7 @@ sys.path.append(os.path.dirname(_HERE))
 
 import common
 
-class BasicFormatTest(unittest.TestCase):
-    def tearDown(self):
-        common.kill_remaining_processes()
-
+class BasicFormatTest(common.TestCase):
     def test_basic_format(self):
         """Play a game. Communication between nodes, and with the
         matchmaking server should be logged in a file in a ShiViz compatible

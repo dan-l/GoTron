@@ -10,10 +10,7 @@ sys.path.append(os.path.dirname(_HERE))
 
 import common
 
-class StartByMaxPlayersTest(unittest.TestCase):
-    def tearDown(self):
-        common.kill_remaining_processes()
-
+class StartByMaxPlayersTest(common.TestCase):
     def test_start_by_max_players(self):
         """c1,..., c6 connect to the matchmaking server. The matchmaking server
         detects that the room size limit is reached and the game starts.

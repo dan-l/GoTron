@@ -13,6 +13,9 @@ def main():
                         help="Number of clients to launch")
     args = parser.parse_args()
 
+    # Try and kill any existing processes to avoid port conflicts.
+    common.kill_remaining_processes()
+
     def sigint_handler(signum, frame):
         _ = signum, frame
         common.kill_remaining_processes()

@@ -10,10 +10,7 @@ sys.path.append(os.path.dirname(_HERE))
 
 import common
 
-class ConnectDisconnectTest(unittest.TestCase):
-    def tearDown(self):
-        common.kill_remaining_processes()
-
+class ConnectDisconnectTest(common.TestCase):
     def test_connect_disconnect(self):
         """c1 connects to the matchmaking server then disconnects. The game
         doesn't start.
