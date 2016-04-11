@@ -21,10 +21,11 @@ class ClientFailureTest(common.TestCase):
 
         clients = common.start_multiple_clients(ms_srv.port, 3)
 
-        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT)
+        # XXX: This sleep is rather fragile because we need to resume after
+        #      the MS has started the game, but before the game has ended.
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT * 0.9)
 
         # Kill client 2.
-        common.sleep(2)
         client2 = clients[1]
         client2.kill()
 
@@ -36,10 +37,10 @@ class ClientFailureTest(common.TestCase):
             found_leader_msg = False
             found_node_msg = False
             for line in log_file:
-                if "Im a leader" in line:
+                if common.line_indicates_leader(line):
                     found_leader_msg = True
                     continue
-                elif "Im a node" in line:
+                elif common.line_indicates_node(line):
                     found_node_msg = True
                     continue
             self.assertFalse(found_node_msg,
@@ -52,10 +53,10 @@ class ClientFailureTest(common.TestCase):
             found_leader_msg = False
             found_node_msg = False
             for line in log_file:
-                if "Im a leader" in line:
+                if common.line_indicates_leader(line):
                     found_leader_msg = True
                     continue
-                elif "Im a node" in line:
+                elif common.line_indicates_node(line):
                     found_node_msg = True
                     continue
             self.assertTrue(found_node_msg,
@@ -67,4 +68,6 @@ class ClientFailureTest(common.TestCase):
         #       client 2 failed.
 
 if __name__ == "__main__":
+    print "Warning: this test case is fragile and requires precise timing."
+    print "It may fail even if the implementation being tested is working."
     unittest.main()

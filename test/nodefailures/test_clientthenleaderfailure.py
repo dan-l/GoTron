@@ -22,7 +22,9 @@ class ClientThenLeaderFailureTest(common.TestCase):
 
         clients = common.start_multiple_clients(ms_srv.port, 4)
 
-        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT)
+        # XXX: This sleep is rather fragile because we need to resume after
+        #      the MS has started the game, but before the game has ended.
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT * 0.9)
 
         # Kill client 3 and leader.
         client3 = clients[2]
@@ -39,10 +41,10 @@ class ClientThenLeaderFailureTest(common.TestCase):
             found_node_msg = False
             found_node_msg_after_leader = False
             for line in log_file:
-                if "Im a leader" in line:
+                if common.line_indicates_leader(line):
                     found_leader_msg = True
                     continue
-                elif "Im a node" in line:
+                elif common.line_indicates_node(line):
                     found_node_msg = True
                     if found_leader_msg:
                         found_node_msg_after_leader = True
@@ -51,18 +53,18 @@ class ClientThenLeaderFailureTest(common.TestCase):
                             "Client 2 should have been a node at some point")
             self.assertTrue(found_leader_msg,
                             "Client 2 should have become the leader")
-            self.assertTrue(found_node_msg_after_leader,
-                            "Client 2 should not have turn back into a node")
+            self.assertFalse(found_node_msg_after_leader,
+                             "Client 2 should not have turn back into a node")
 
         client4 = clients[3]
         with open(client4.local_log_path) as log_file:
             found_leader_msg = False
             found_node_msg = False
             for line in log_file:
-                if "Im a leader" in line:
+                if common.line_indicates_leader(line):
                     found_leader_msg = True
                     continue
-                elif "Im a node" in line:
+                elif common.line_indicates_node(line):
                     found_node_msg = True
                     continue
             self.assertTrue(found_node_msg,
@@ -71,4 +73,6 @@ class ClientThenLeaderFailureTest(common.TestCase):
                              "Client 4 should never have been a leader")
 
 if __name__ == "__main__":
+    print "Warning: this test case is fragile and requires precise timing."
+    print "It may fail even if the implementation being tested is working."
     unittest.main()
