@@ -166,3 +166,10 @@ def sleep(timeout):
     print "Sleeping for {}s".format(timeout)
     time.sleep(timeout)
     print "Done sleeping"
+
+def line_indicates_leader(line):
+    return ("Im a leader" in line or "Leader sending death report" in line or
+            "IM LEADER" in line)
+
+def line_indicates_node(line):
+    return "Im a node" in line

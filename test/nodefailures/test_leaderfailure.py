@@ -38,12 +38,10 @@ class LeaderFailureTest(common.TestCase):
             found_node_msg = False
             found_node_msg_after_leader = False
             for line in log_file:
-                if ("Im a leader" in line or
-                    "Leader sending death report" in line or
-                    "IM LEADER" in line):
-                        found_leader_msg = True
-                        continue
-                elif "Im a node" in line:
+                if common.line_indicates_leader(line):
+                    found_leader_msg = True
+                    continue
+                elif common.line_indicates_node(line):
                     found_node_msg = True
                     if found_leader_msg:
                         found_node_msg_after_leader = True
@@ -61,10 +59,10 @@ class LeaderFailureTest(common.TestCase):
             found_leader_msg = False
             found_node_msg = False
             for line in log_file:
-                if "Im a leader" in line:
+                if common.line_indicates_leader(line):
                     found_leader_msg = True
                     continue
-                elif "Im a node" in line:
+                elif common.line_indicates_node(line):
                     found_node_msg = True
                     if found_leader_msg:
                         found_node_msg_after_leader = True
@@ -75,4 +73,6 @@ class LeaderFailureTest(common.TestCase):
                              "Client 3 should stay as a normal node")
 
 if __name__ == "__main__":
+    print "Warning: this test case is fragile and requires precise timing."
+    print "It may fail even if the implementation being tested is working."
     unittest.main()
