@@ -20,12 +20,11 @@ class BasicFormatTest(unittest.TestCase):
         matchmaking server should be logged in a file in a ShiViz compatible
         format.
         """
-        ms_srv_port = 2222
-        ms_srv = common.MatchMakingServer(ms_srv_port)
+        ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv_port, 2)
+        clients = common.start_multiple_clients(ms_srv.port, 2)
 
         # Wait for a bit to make sure a game starts and is played for a while.
         time.sleep(10)

@@ -19,12 +19,11 @@ class LeaderThenClientFailureTest(unittest.TestCase):
         (2, 3, 4).The leader client fails followed by 2 failing. 3 should become
         the new leader, and 4 should stay as a client.
         """
-        ms_srv_port = 2222
-        ms_srv = common.MatchMakingServer(ms_srv_port)
+        ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv_port, 4)
+        clients = common.start_multiple_clients(ms_srv.port, 4)
 
         time.sleep(1)
 
@@ -39,8 +38,7 @@ class LeaderThenClientFailureTest(unittest.TestCase):
         time.sleep(8)
 
         client3 = clients[2]
-        with open(os.path.join(common.NODE_CLIENT_DIR,
-                               client3.local_log_filename)) as log_file:
+        with open(client3.local_log_path) as log_file:
             found_leader_msg = False
             found_node_msg = False
             found_node_msg_after_leader = False
@@ -61,8 +59,7 @@ class LeaderThenClientFailureTest(unittest.TestCase):
                             "Client 3 should not have turn back into a node")
 
         client4 = clients[3]
-        with open(os.path.join(common.NODE_CLIENT_DIR,
-                               client4.local_log_filename)) as log_file:
+        with open(client4.local_log_path) as log_file:
             found_leader_msg = False
             found_node_msg = False
             for line in log_file:

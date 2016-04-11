@@ -19,12 +19,11 @@ class DisconnectBeforeGameStartTest(unittest.TestCase):
         server, c1 disconnects before countdown timer expires. Game doesn't
         start and we see one player waiting.
         """
-        ms_srv_port = 2222
-        ms_srv = common.MatchMakingServer(ms_srv_port)
+        ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv_port, 1)
+        clients = common.start_multiple_clients(ms_srv.port, 1)
 
         # Wait for a while to make sure MS server logs that one client is
         # connected.
@@ -33,7 +32,7 @@ class DisconnectBeforeGameStartTest(unittest.TestCase):
         # Start client 2, then disconnect client 1 by killing client 1.
         client2 = common.Client(node_port=9003,
                                 node_rpc_port=9002,
-                                ms_port=ms_srv_port,
+                                ms_port=ms_srv.port,
                                 http_srv_port=9001)
         client2.start()
         time.sleep(2)
@@ -44,8 +43,7 @@ class DisconnectBeforeGameStartTest(unittest.TestCase):
         starting_game_found = False
         one_player_found = False
         two_players_found = False
-        with open(os.path.join(common.MATCHMAKING_DIR,
-                               ms_srv.local_log_filename)) as log_file:
+        with open(ms_srv.local_log_path) as log_file:
             for line in log_file:
                 if "Starting Game" in line:
                     starting_game_found = True

@@ -18,12 +18,11 @@ class ConnectDisconnectTest(unittest.TestCase):
         """c1 connects to the matchmaking server then disconnects. The game
         doesn't start.
         """
-        ms_srv_port = 2222
-        ms_srv = common.MatchMakingServer(ms_srv_port)
+        ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv_port, 1)
+        clients = common.start_multiple_clients(ms_srv.port, 1)
 
         # Disconnect the client by killing it.
         # The sleeps here ensure the MS server and client are given enough time
@@ -34,8 +33,7 @@ class ConnectDisconnectTest(unittest.TestCase):
 
         starting_game_found = False
         player_count_found = False
-        with open(os.path.join(common.MATCHMAKING_DIR,
-                               ms_srv.local_log_filename)) as log_file:
+        with open(ms_srv.local_log_path) as log_file:
             for line in log_file:
                 if "Starting Game" in line:
                     starting_game_found = True
@@ -48,6 +46,7 @@ class ConnectDisconnectTest(unittest.TestCase):
                         "MS server should have been connected to")
         self.assertFalse(starting_game_found, "Game should not have started")
 
+        ms_srv.kill()
         ms_srv.wait()
         for client in clients:
             client.wait()

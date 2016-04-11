@@ -40,7 +40,8 @@ class MatchMakingServer(CommonBinary):
     def __init__(self, port):
         super(MatchMakingServer, self).__init__()
         self.port = port
-        self.local_log_filename = "127.0.0.1{}-local.txt".format(port)
+        self.local_log_path = os.path.join(
+            MATCHMAKING_DIR, "127.0.0.1{}-local.txt".format(port))
         self.govector_log_path = os.path.join(
             MATCHMAKING_DIR, "127.0.0.1{}-Log.txt".format(port))
 
@@ -73,12 +74,10 @@ class Client(CommonBinary):
         self._node_rpc_port = node_rpc_port
         self._ms_port = ms_port
         self._http_srv_port = http_srv_port
-        self.local_log_filename = "localhost{}-local.txt".format(node_port)
-        # TODO: govector_log_filename should be replaced with govector_log_path
-        #       everywhere.
-        self.govector_log_filename = "localhost{}-Log.txt".format(node_port)
+        self.local_log_path = os.path.join(
+            NODE_CLIENT_DIR, "localhost{}-local.txt".format(node_port))
         self.govector_log_path = os.path.join(
-            NODE_CLIENT_DIR, self.govector_log_filename)
+            NODE_CLIENT_DIR, "localhost{}-Log.txt".format(node_port))
 
         possible_bin_paths = [
             os.path.join(NODE_CLIENT_DIR, ".vendor", "bin", "Node-Client"),

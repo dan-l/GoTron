@@ -13,13 +13,11 @@ def main():
                         help="Number of clients to launch")
     args = parser.parse_args()
 
-    print "Starting MS Server (Py)"
-    ms_srv_port = 2222
-    ms_srv = common.MatchMakingServer(ms_srv_port)
+    ms_srv = common.MatchMakingServer(2222)
     ms_srv.start()
     time.sleep(1)
 
-    clients = common.start_multiple_clients(ms_srv_port, args.client_count)
+    clients = common.start_multiple_clients(ms_srv.port, args.client_count)
 
     # Wait for the processes to end so that Ctrl-C kills all processes at once.
     ms_srv.wait()

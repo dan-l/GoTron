@@ -19,12 +19,11 @@ class ClientFailureTest(unittest.TestCase):
         2 fails, and the leader should inform all other clients that 2 has
         failed. 1 should stay the leader, 3 should stay as a client.
         """
-        ms_srv_port = 2222
-        ms_srv = common.MatchMakingServer(ms_srv_port)
+        ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv_port, 3)
+        clients = common.start_multiple_clients(ms_srv.port, 3)
 
         time.sleep(1)
 
@@ -37,8 +36,7 @@ class ClientFailureTest(unittest.TestCase):
         time.sleep(8)
 
         leader = clients[0]
-        with open(os.path.join(common.NODE_CLIENT_DIR,
-                               leader.local_log_filename)) as log_file:
+        with open(leader.local_log_path) as log_file:
             found_leader_msg = False
             found_node_msg = False
             for line in log_file:
@@ -54,8 +52,7 @@ class ClientFailureTest(unittest.TestCase):
                             "Leader should always been such")
 
         client3 = clients[2]
-        with open(os.path.join(common.NODE_CLIENT_DIR,
-                               client3.local_log_filename)) as log_file:
+        with open(client3.local_log_path) as log_file:
             found_leader_msg = False
             found_node_msg = False
             for line in log_file:

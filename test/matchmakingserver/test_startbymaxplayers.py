@@ -18,12 +18,11 @@ class StartByMaxPlayersTest(unittest.TestCase):
         """c1,..., c6 connect to the matchmaking server. The matchmaking server
         detects that the room size limit is reached and the game starts.
         """
-        ms_srv_port = 2222
-        ms_srv = common.MatchMakingServer(ms_srv_port)
+        ms_srv = common.MatchMakingServer(2222)
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv_port, 6)
+        clients = common.start_multiple_clients(ms_srv.port, 6)
 
         # Wait for a while to make sure MS server logs that one client is
         # connected.
@@ -36,8 +35,7 @@ class StartByMaxPlayersTest(unittest.TestCase):
         four_players_found = False
         five_players_found = False
         six_players_found = False
-        with open(os.path.join(common.MATCHMAKING_DIR,
-                               ms_srv.local_log_filename)) as log_file:
+        with open(ms_srv.local_log_path) as log_file:
             for line in log_file:
                 if "Starting Game" in line:
                     starting_game_found = True
