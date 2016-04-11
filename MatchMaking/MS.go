@@ -198,7 +198,7 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 		localLog("Join: Starting Game")
 		this.makeGameRoom()
 		this.assignID()
-		this.startGame()
+		go this.startGame()
 		this.NodeLock.Unlock()
 	} else {
 		localLog("Join:", len(this.nodeList), "players waiting")
@@ -219,7 +219,7 @@ func endSession(this *Context) {
 			localLog("ES: Starting Game")
 			this.makeGameRoom()
 			this.assignID()
-			this.startGame()
+			go this.startGame()
 			log.Println("ES: Done Start Game")
 			this.NodeLock.Unlock()
 		} else {
