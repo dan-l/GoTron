@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import os
+import re
 import sys
 import unittest
 
@@ -48,31 +49,22 @@ class BasicTest(common.TestCase):
                             "start".format(client.node_port))
 
         for client in clients:
+            # Logged when doing a Join RPC call to MS.
             join_msg = "Rpc Call Context.Join to localhost:{}".format(ms_srv.port)
             found_join_msg = False
+            # Logged when receiving an RPC call to start the game.
             start_game_msg = "Rpc Called Start Game to localhost:{}".format(
                 ms_srv.port)
             found_start_game_msg = False
-            found_send_interval_msg = False
-            found_recv_interval_msg = False
+            lines = []
             with open(client.govector_log_path) as log_file:
                 lines = log_file.readlines()
-                for line in lines[1::2]:
-                    # Logged when doing a Join RPC call to MS.
-                    if join_msg in line:
-                        found_join_msg = True
-                    # Logged when receiving an RPC call to start the game.
-                    elif start_game_msg in line:
-                        found_start_game_msg = True
-                    # Logged when sending an interval update message to peers.
-                    # TODO: We need to test that we send interval updates to *ALL* peers.
-                    elif "Sending: Interval update" in line:
-                        found_send_interval_msg = True
-                    # Logged when receiving an interval update msg from a peer.
-                    # TODO: We need to test we get interval updates from all peers.
-                    # TODO: We need to change the message to be specific to interval updates
-                    elif "Received packet from" in line:
-                        found_recv_interval_msg = True
+
+            for line in lines[1::2]:
+                if join_msg in line:
+                    found_join_msg = True
+                elif start_game_msg in line:
+                    found_start_game_msg = True
 
             self.assertTrue(found_join_msg,
                             "Node {} should log that it contacted the MS for "
@@ -80,10 +72,38 @@ class BasicTest(common.TestCase):
             self.assertTrue(found_start_game_msg,
                             "Node {} should log that the MS said the game was "
                             "starting".format(client.node_port))
-            self.assertTrue(found_send_interval_msg,
-                            "Node should've logged that it was sending an interval update")
-            self.assertTrue(found_recv_interval_msg,
-                            "Node should've logged that it received an interval update")
+
+            other_clients = [c for c in clients if c != client]
+            for other_client in other_clients:
+                other_address = "localhost:{}".format(other_client.node_port)
+                # Logged when sending an interval update message to peers.
+                send_interval_regex = re.compile(
+                    "Sending: Interval update.* at ip (.*)]")
+                found_send_interval_msg = False
+                # TODO: This regex needs to be tightened so it only matches
+                #       interval update packets.
+                # Logged when receiving an interval update msg from a peer.
+                recv_interval_regex = re.compile(
+                    'Received packet from .* {.*"Node".*"Ip":"(.*)","Curr')
+                found_recv_interval_msg = False
+                for line in lines[1::2]:
+                    send_interval_msg_match = send_interval_regex.match(line)
+                    recv_interval_msg_match = recv_interval_regex.match(line)
+                    if (send_interval_msg_match and
+                        send_interval_msg_match.group(1) == other_address):
+                        found_send_interval_msg = True
+                    elif (recv_interval_msg_match and
+                          recv_interval_msg_match.group(1) == other_address):
+                        found_recv_interval_msg = True
+
+                self.assertTrue(found_send_interval_msg,
+                                "Node {} should log that it sent an interval "
+                                "update to {}".format(client.node_port,
+                                                        other_client.node_port))
+                self.assertTrue(found_recv_interval_msg,
+                                "Node {} should log that it received an "
+                                "interval update from {}".format(client.node_port,
+                                                                 other_client.node_port))
 
 if __name__ == "__main__":
     unittest.main()
