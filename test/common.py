@@ -29,7 +29,8 @@ class CommonBinary(object):
         except psutil.NoSuchProcess:
             # This method is best effort, so keep going even if the process
             # can't be killed.
-            pass
+            print ("Tried to kill process with PID '{}' but failed. Continuing "
+                   "anyways.".format(self._process.pid))
 
     def wait(self):
         self._process.wait()
@@ -71,7 +72,7 @@ class MatchMakingServer(CommonBinary):
 class Client(CommonBinary):
     def __init__(self, node_port, node_rpc_port, ms_port, http_srv_port):
         super(Client, self).__init__()
-        self._node_port = node_port
+        self.node_port = node_port
         self._node_rpc_port = node_rpc_port
         self._ms_port = ms_port
         self._http_srv_port = http_srv_port
@@ -106,7 +107,7 @@ class Client(CommonBinary):
         with use_cwd(NODE_CLIENT_DIR), open(os.devnull, "w") as dev_null:
             self._process = subprocess.Popen([
                 self._bin_path,
-                "localhost:{}".format(self._node_port),
+                "localhost:{}".format(self.node_port),
                 "localhost:{}".format(self._node_rpc_port),
                 "localhost:{}".format(self._ms_port),
                 "localhost:{}".format(self._http_srv_port)

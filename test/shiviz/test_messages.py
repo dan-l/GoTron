@@ -23,24 +23,29 @@ class BasicTest(common.TestCase):
         # Wait for a bit to make sure a game starts and is played for a while.
         common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT * 1.1)
 
-        found_join_msg = False
-        found_start_game_msg = False
+        lines = []
         with open(ms_srv.govector_log_path) as log_file:
             lines = log_file.readlines()
+
+        for client in clients:
+            join_msg = "AD: new node: IP: localhost:{}".format(client.node_port)
+            found_join_msg = False
+            start_game_msg = "Rpc Call NodeService.StartGame to localhost:{}".format(
+                client.node_port)
+            found_start_game_msg = False
             for line in lines[1::2]:
                 # Logged when receiving a Join RPC call from a node.
-                if "AD: new node" in line:
+                if join_msg in line:
                     found_join_msg = True
                 # Logged when doing an RPC call to a node to start a game.
-                elif "Rpc Call NodeService.StartGame" in line:
+                elif start_game_msg in line:
                     found_start_game_msg = True
 
-        # TODO: Ensure that join and start game messages are found for all nodes,
-        #       not just at least one.
-        self.assertTrue(found_join_msg,
-                        "MS should've logged that a node joined")
-        self.assertTrue(found_start_game_msg,
-                        "MS should've logged that it notified nodes of game start")
+            self.assertTrue(found_join_msg,
+                            "MS should've logged that {} joined".format(client.node_port))
+            self.assertTrue(found_start_game_msg,
+                            "MS should've logged that it notified {} of game "
+                            "start".format(client.node_port))
 
         for client in clients:
             found_join_msg = False

@@ -124,10 +124,11 @@ func (this *Context) assignID() {
 // Notify all cients in current session about other players in the same room
 func (this *Context) startGame() {
 	fmt.Println("Connection Number:", len(this.connections))
-	for key, _ := range this.nodeList {
+	for key, msNodeVal := range this.nodeList {
 		var reply *ValReply = &ValReply{Val: ""}
-		log := logSend("Rpc Call " + RpcStartGame)
-		e := this.connections[key].Call(RpcStartGame, &GameArgs{NodeList: this.gameRoom, Log: log}, reply)
+		log := logSend("Rpc Call " + RPC_START_GAME + " to " + msNodeVal.Node.Ip)
+		e := this.connections[key].Call(RPC_START_GAME,
+			&GameArgs{NodeList: this.gameRoom, Log: log}, reply)
 		if e != nil {
 			fmt.Println("Failed to start", key)
 		}
@@ -185,12 +186,12 @@ func (this *Context) checkConn() {
 
 // RPC join called by a client
 func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
-	logReceive("AD: new node:", nodeJoin.Log)
+	logReceive("AD: new node: IP: "+nodeJoin.Ip+" Log: ", nodeJoin.Log)
 	AddNode(this, nodeJoin)
 	localLog("New node: ", nodeJoin.Ip)
 	this.checkConn() // Update NodeList and Connections
 
-	localLog("ES:", len(this.nodeList), "players")
+	localLog("Join:", len(this.nodeList), "players")
 
 	// Check if the room is full
 	if len(this.nodeList) >= this.roomLimit {
@@ -271,7 +272,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
 const SESSION_DELAY time.Duration = 30 * time.Second
-const RpcStartGame string = "NodeService.StartGame"
+const RPC_START_GAME string = "NodeService.StartGame"
 const RpcMessage string = "NodeService.Message"
 const leastPlayers int = 2
 
