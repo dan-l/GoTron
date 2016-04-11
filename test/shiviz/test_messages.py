@@ -48,7 +48,10 @@ class BasicTest(common.TestCase):
                             "start".format(client.node_port))
 
         for client in clients:
+            join_msg = "Rpc Call Context.Join to localhost:{}".format(ms_srv.port)
             found_join_msg = False
+            start_game_msg = "Rpc Called Start Game to localhost:{}".format(
+                ms_srv.port)
             found_start_game_msg = False
             found_send_interval_msg = False
             found_recv_interval_msg = False
@@ -56,10 +59,10 @@ class BasicTest(common.TestCase):
                 lines = log_file.readlines()
                 for line in lines[1::2]:
                     # Logged when doing a Join RPC call to MS.
-                    if "Rpc Call Context.Join" in line:
+                    if join_msg in line:
                         found_join_msg = True
                     # Logged when receiving an RPC call to start the game.
-                    elif "Rpc Called Start Game" in line:
+                    elif start_game_msg in line:
                         found_start_game_msg = True
                     # Logged when sending an interval update message to peers.
                     # TODO: We need to test that we send interval updates to *ALL* peers.
@@ -72,9 +75,11 @@ class BasicTest(common.TestCase):
                         found_recv_interval_msg = True
 
             self.assertTrue(found_join_msg,
-                            "Node should've logged that it contacted the MS server for joining")
+                            "Node {} should log that it contacted the MS for "
+                            "joining".format(client.node_port))
             self.assertTrue(found_start_game_msg,
-                            "Node should've logged that MS server said the game was starting")
+                            "Node {} should log that the MS said the game was "
+                            "starting".format(client.node_port))
             self.assertTrue(found_send_interval_msg,
                             "Node should've logged that it was sending an interval update")
             self.assertTrue(found_recv_interval_msg,

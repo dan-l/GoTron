@@ -31,7 +31,7 @@ var msService *rpc.Client
 // This RPC function is triggered when a game is ready to begin.
 func (nc *NodeService) StartGame(args *GameArgs, response *ValReply) error {
 	nodes = args.NodeList
-	logReceive("Rpc Called Start Game", args.Log)
+	logReceive("Rpc Called Start Game to "+msServerAddr, args.Log)
 	if len(nodes) > MAX_PLAYERS {
 		return errors.New("MS Server returned a node list with more than the " +
 			"max number of supported players")
@@ -96,7 +96,8 @@ func msRpcDial() {
 	checkErr(e, 96)
 
 	var reply *ValReply = &ValReply{Val: ""}
-	log := logSend("Rpc Call Context.Join")
-	err := msService.Call("Context.Join", &NodeJoin{RpcIp: nodeRpcAddr, Ip: nodeAddr, Log: log}, reply)
+	log := logSend("Rpc Call Context.Join to " + msServerAddr)
+	err := msService.Call("Context.Join",
+		&NodeJoin{RpcIp: nodeRpcAddr, Ip: nodeAddr, Log: log}, reply)
 	checkErr(err, 101)
 }
