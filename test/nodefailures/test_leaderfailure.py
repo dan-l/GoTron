@@ -21,10 +21,11 @@ class LeaderFailureTest(common.TestCase):
 
         clients = common.start_multiple_clients(ms_srv.port, 3)
 
-        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT)
+        # XXX: This sleep is rather fragile because we need to resume after
+        #      the MS has started the game, but before the game has ended.
+        common.sleep(common.MatchMakingServer.GAME_START_TIMEOUT * 0.9)
 
         # Kill the leader.
-        common.sleep(2)
         leader = clients[0]
         leader.kill()
 
@@ -37,9 +38,11 @@ class LeaderFailureTest(common.TestCase):
             found_node_msg = False
             found_node_msg_after_leader = False
             for line in log_file:
-                if "Im a leader" in line:
-                    found_leader_msg = True
-                    continue
+                if ("Im a leader" in line or
+                    "Leader sending death report" in line or
+                    "IM LEADER" in line):
+                        found_leader_msg = True
+                        continue
                 elif "Im a node" in line:
                     found_node_msg = True
                     if found_leader_msg:
@@ -49,8 +52,8 @@ class LeaderFailureTest(common.TestCase):
                             "Client 2 should have been a node at some point")
             self.assertTrue(found_leader_msg,
                             "Client 2 should become the leader")
-            self.assertTrue(found_node_msg_after_leader,
-                            "Client 2 should not have turn back into a node")
+            self.assertFalse(found_node_msg_after_leader,
+                             "Client 2 should not have turn back into a node")
         client2.kill()
 
         client3 = clients[2]
