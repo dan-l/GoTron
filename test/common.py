@@ -123,6 +123,9 @@ def start_multiple_clients(ms_srv_port, client_count):
                               node_rpc_port=node_rpc_port,
                               ms_port=ms_srv_port,
                               http_srv_port=http_srv_port))
+        print ("Starting client w/ node port {}, RPC port {}, MS port {}, HTTP "
+               "port {}".format(node_port, node_rpc_port, ms_srv_port,
+                                http_srv_port))
         clients[-1].start()
         time.sleep(0.5)
 
