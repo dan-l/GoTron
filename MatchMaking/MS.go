@@ -140,7 +140,7 @@ func (this *Context) startGame() {
 	this.clientNum = 0
 
 	// Reset the timer
-	this.gameTimer.Reset(sessionDelay)
+	this.gameTimer.Reset(SESSION_DELAY)
 }
 
 // Update NodeList and Connection based on disconnected clients
@@ -206,7 +206,7 @@ func (this *Context) Join(nodeJoin *NodeJoin, reply *ValReply) error {
 	return nil
 }
 
-// Perform certain operation every sessionDelay
+// Perform certain operation every SESSION_DELAY
 func endSession(this *Context) {
 	defer waitGroup.Done()
 	for _ = range this.gameTimer.C {
@@ -223,7 +223,7 @@ func endSession(this *Context) {
 			log.Println("ES: Done Start Game")
 			this.NodeLock.Unlock()
 		} else {
-			this.gameTimer.Reset(sessionDelay)
+			this.gameTimer.Reset(SESSION_DELAY)
 
 			localLog("ES:", len(this.nodeList), "players waiting")
 		}
@@ -270,7 +270,7 @@ func listenToClient(ctx *Context, rpcAddr string) {
 
 // Global variables
 var waitGroup sync.WaitGroup // Wait group
-const sessionDelay time.Duration = 11 * time.Second
+const SESSION_DELAY time.Duration = 30 * time.Second
 const RpcStartGame string = "NodeService.StartGame"
 const RpcMessage string = "NodeService.Message"
 const leastPlayers int = 2
@@ -289,7 +289,7 @@ func main() {
 		clientNum:   0,
 		roomLimit:   6,
 		gameRoom:    make([]*Node, 0),
-		gameTimer:   time.NewTimer(60 * time.Second),
+		gameTimer:   time.NewTimer(SESSION_DELAY),
 	}
 
 	// get arguments

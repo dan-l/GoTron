@@ -35,7 +35,7 @@ class CommonBinary(object):
 
 class MatchMakingServer(CommonBinary):
     # The number of seconds the game start timer expires.
-    GAME_START_TIMEOUT = 60
+    GAME_START_TIMEOUT = 30
 
     def __init__(self, port):
         super(MatchMakingServer, self).__init__()
