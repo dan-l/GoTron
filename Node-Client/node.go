@@ -251,11 +251,8 @@ func tickGame() {
 				new_x := node.CurrLoc.X
 				new_y := node.CurrLoc.Y
 
-				// If the local player is still alive and playing, we want to update
-				// the location of all players via path prediction. If the local
-				// player is dead, we only want to do path prediction for all other
-				// non-dead players.
-				if (imAlive && isPlaying) || node.Id != nodeId {
+				// only predict for live nodes
+				if isPlaying && node.IsAlive {
 					// Path prediction
 					board[y][x] = "t" + playerIndex // Change position to be a trail.
 					switch direction {
@@ -278,7 +275,7 @@ func tickGame() {
 							notifyPlayerDeathToJS()
 							reportASorrowfulDeathToPeers(node)
 						} else if isLeader() {
-							// If leader we tell peers who the dead node is.
+							// we tell peers who the dead node is.
 							node.IsAlive = false
 							aliveNodes = aliveNodes - 1
 							localLog("Leader sending death report ", node.Id)
@@ -286,14 +283,8 @@ func tickGame() {
 						}
 						// We don't update the position to a new value
 						board[y][x] = getPlayerState(node.Id)
-						// check if I'm the last node standing.
 						if haveIWon() {
 							localLog("Leader won")
-							break
-						} else if aliveNodes == 1 {
-							// TODO verify proposed fix
-							localLog("Game over")
-							isPlaying = false
 							break
 						}
 					} else {
@@ -499,16 +490,12 @@ func contains(x int, y int, list []*Pos) bool {
 	return false
 }
 
-// LEADER: Send game history of at most 5 previous ticks to all nodes.
+// Continuously send game history of at most 5 previous ticks to all nodes
+// Do it even if game ends because the last standing node might not communicate to other peers
 func enforceGameState() {
 	for {
-		// if isPlaying == false {
-		// 	return
-		// }
 		time.Sleep(enforceGameStateRate)
-		if !isLeader() {
-			return
-		} else {
+		if isLeader() {
 			mutex.Lock()
 			message := &Message{IsLeader: true, GameHistory: gameHistory, Node: *myNode}
 			mutex.Unlock()
@@ -553,8 +540,7 @@ func sendPacketsToPeers(logMsg string, message *Message) {
 
 // Send data to ip via UDP.
 func sendUDPPacket(ip string, data []byte) {
-	// TODO a random port is picked since
-	// we can't listen and read at the same time
+	// a random port is picked since we can't listen and read at the same time
 	udpConn, err := net.Dial("udp", ip)
 	checkErr(err, 559)
 	defer udpConn.Close()
@@ -664,11 +650,15 @@ func reportASorrowfulDeathToPeers(node *Node) {
 }
 
 func haveIWon() bool {
+	// stop playing when someone has won
 	if myNode.IsAlive && aliveNodes == 1 {
 		localLog("I WIN")
 		notifyPlayerVictoryToJS()
 		isPlaying = false
 		return true
+	} else if aliveNodes == 1 {
+		localLog("Someone else won")
+		isPlaying = false
 	}
 	return false
 }
