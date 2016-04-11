@@ -40,15 +40,18 @@ type Message struct {
 }
 
 const (
-	BOARD_SIZE       int    = 10
-	CHECKIN_INTERVAL int    = 200
-	DIRECTION_UP     string = "U"
-	DIRECTION_DOWN   string = "D"
-	DIRECTION_LEFT   string = "L"
-	DIRECTION_RIGHT  string = "R"
-	MAX_PLAYERS      int    = 6
-	AXIS_X           int    = 0
-	AXIS_Y           int    = 1
+	BOARD_SIZE           int           = 10
+	CHECKIN_INTERVAL     int           = 200
+	DIRECTION_UP         string        = "U"
+	DIRECTION_DOWN       string        = "D"
+	DIRECTION_LEFT       string        = "L"
+	DIRECTION_RIGHT      string        = "R"
+	MAX_PLAYERS          int           = 6
+	AXIS_X               int           = 0
+	AXIS_Y               int           = 1
+	intervalUpdateRate   time.Duration = 1000 * time.Millisecond
+	tickRate             time.Duration = 500 * time.Millisecond
+	enforceGameStateRate time.Duration = 2000 * time.Millisecond
 )
 
 // Game variables.
@@ -61,7 +64,6 @@ var httpServerAddr string // HTTP Server IP.
 var nodes []*Node         // All nodes in the game.
 var myNode *Node          // My node.
 
-var HistoryLimit int              // Size limit for both nodeHistory and gameHistory
 var nodeHistory map[string][]*Pos // Id to list of 5 recent local locations of each player
 var aliveNodes int                // Number of alive nodes.
 
@@ -73,14 +75,9 @@ var gameHistory map[string][]*Pos // Last five moves of every node in the game. 
 var waitGroup sync.WaitGroup // For internal processes.
 var mutex *sync.Mutex        // For global vars.
 
-// Game timers in milliseconds.
-var intervalUpdateRate time.Duration
-var tickRate time.Duration
-var enforceGameStateRate time.Duration
-
 var board [BOARD_SIZE][BOARD_SIZE]string
-var directions map[string]string
-var initialPosition map[string]*Pos
+var initialDirections map[string]string // Initial directions for all players.
+var initialPositions map[string]*Pos    // Initial positions for all players.
 var lastCheckin map[string]time.Time
 
 func main() {
@@ -110,7 +107,7 @@ func main() {
 
 // Initialize variables.
 func init() {
-	directions = map[string]string{
+	initialDirections = map[string]string{
 		"p1": DIRECTION_RIGHT,
 		"p2": DIRECTION_LEFT,
 		"p3": DIRECTION_RIGHT,
@@ -119,7 +116,7 @@ func init() {
 		"p6": DIRECTION_LEFT,
 	}
 
-	initialPosition = map[string]*Pos{
+	initialPositions = map[string]*Pos{
 		"p1": &Pos{1, 1},
 		"p2": &Pos{8, 8},
 		"p3": &Pos{1, 8},
@@ -128,7 +125,7 @@ func init() {
 		"p6": &Pos{8, 5},
 	}
 
-	for player, pos := range initialPosition {
+	for player, pos := range initialPositions {
 		board[pos.Y][pos.X] = player
 	}
 
@@ -137,13 +134,9 @@ func init() {
 
 	mutex = &sync.Mutex{}
 
-	HistoryLimit = 5
 	gameHistory = make(map[string][]*Pos)
 	lastCheckin = make(map[string]time.Time)
 	failedNodes = make([]string, 0)
-	tickRate = 500 * time.Millisecond
-	intervalUpdateRate = 1000 * time.Millisecond // TODO we said it's 100 in proposal?
-	enforceGameStateRate = 2000 * time.Millisecond
 }
 
 func intMax(a int, b int) int {
@@ -163,15 +156,15 @@ func intMin(a int, b int) int {
 func startGame() {
 	// Find myself and init variables.
 	for _, node := range nodes {
-		node.CurrLoc = initialPosition[node.Id]
-		node.Direction = directions[node.Id]
+		node.CurrLoc = initialPositions[node.Id]
+		node.Direction = initialDirections[node.Id]
 		node.IsAlive = true
 		lastCheckin[node.Id] = time.Now()
 	}
 
 	// Remove the node IDs of non-present players from the board.
 	for i := len(nodes) + 1; i <= MAX_PLAYERS; i++ {
-		pos, ok := initialPosition[fmt.Sprintf("p%d", i)]
+		pos, ok := initialPositions[fmt.Sprintf("p%d", i)]
 		if !ok {
 			continue
 		}
