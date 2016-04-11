@@ -28,6 +28,7 @@ class BasicTest(common.TestCase):
         with open(ms_srv.govector_log_path) as log_file:
             lines = log_file.readlines()
 
+        # Check that the MS interacts with all clients.
         for client in clients:
             join_msg = "AD: new node: IP: localhost:{}".format(client.node_port)
             found_join_msg = False
@@ -48,6 +49,7 @@ class BasicTest(common.TestCase):
                             "MS should've logged that it notified {} of game "
                             "start".format(client.node_port))
 
+        # Check that all clients interact with the MS.
         for client in clients:
             # Logged when doing a Join RPC call to MS.
             join_msg = "Rpc Call Context.Join to localhost:{}".format(ms_srv.port)
@@ -73,6 +75,7 @@ class BasicTest(common.TestCase):
                             "Node {} should log that the MS said the game was "
                             "starting".format(client.node_port))
 
+            # Check that all clients interact with each other.
             other_clients = [c for c in clients if c != client]
             for other_client in other_clients:
                 other_address = "localhost:{}".format(other_client.node_port)
