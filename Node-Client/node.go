@@ -163,11 +163,6 @@ func startGame() {
 		node.CurrLoc = initialPosition[node.Id]
 		node.Direction = directions[node.Id]
 		node.IsAlive = true
-		// if node.Ip == nodeAddr {
-		// 	myNode = node
-		// 	nodeId = node.Id
-		// 	nodeIndex = strconv.Itoa(i + 1)
-		// }
 		lastCheckin[node.Id] = time.Now()
 	}
 
@@ -386,7 +381,7 @@ func nodeHasCollided(oldX int, oldY int, newX int, newY int) bool {
 func renderGame() {
 	mutex.Lock()
 	if isLeader() {
-		go collectLast5Moves()
+		go collectLast7Moves()
 	} else {
 		// Only non-leader nodes have to do this
 		go cacheLocation()
@@ -533,7 +528,7 @@ func sendPacketsToPeers(logMsg string, message *Message) {
 			message.Log = log
 			nodeJson, err := json.Marshal(message)
 			checkErr(err, 548)
-			sendUDPPacket(node.Ip, nodeJson)
+			go sendUDPPacket(node.Ip, nodeJson)
 		}
 	}
 }
