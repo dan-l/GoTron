@@ -22,7 +22,7 @@ class TooLittlePlayersTest(unittest.TestCase):
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv.port, 1)
+        _ = common.start_multiple_clients(ms_srv.port, 1)
 
         print "Sleeping for more than the MS server timeout"
         time.sleep(14)
@@ -41,12 +41,6 @@ class TooLittlePlayersTest(unittest.TestCase):
         self.assertTrue(player_count_found,
                         "MS server should have been connected to")
         self.assertFalse(starting_game_found, "Game should not have started")
-
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
 
 if __name__ == "__main__":
     unittest.main()

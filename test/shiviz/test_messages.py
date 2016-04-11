@@ -79,11 +79,5 @@ class BasicTest(unittest.TestCase):
             self.assertTrue(found_recv_interval_msg,
                             "Node should've logged that it received an interval update")
 
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
-
 if __name__ == "__main__":
     unittest.main()

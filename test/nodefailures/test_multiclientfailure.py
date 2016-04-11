@@ -72,11 +72,5 @@ class MultiClientFailureTest(unittest.TestCase):
         # TODO: We should check that the leader informed the other clients that
         #       clients 2 and 3 failed.
 
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
-
 if __name__ == "__main__":
     unittest.main()

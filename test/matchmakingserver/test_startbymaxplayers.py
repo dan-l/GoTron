@@ -22,7 +22,7 @@ class StartByMaxPlayersTest(unittest.TestCase):
         ms_srv.start()
         time.sleep(2)
 
-        clients = common.start_multiple_clients(ms_srv.port, 6)
+        _ = common.start_multiple_clients(ms_srv.port, 6)
 
         # Wait for a while to make sure MS server logs that one client is
         # connected.
@@ -78,12 +78,6 @@ class StartByMaxPlayersTest(unittest.TestCase):
                         ("MS server should have been connected to by six "
                          "players at some point"))
         self.assertTrue(starting_game_found, "Game should have started")
-
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
 
 if __name__ == "__main__":
     unittest.main()

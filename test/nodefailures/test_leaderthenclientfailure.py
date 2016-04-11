@@ -74,11 +74,5 @@ class LeaderThenClientFailureTest(unittest.TestCase):
             self.assertFalse(found_leader_msg,
                              "Client 4 should never have been a leader")
 
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
-
 if __name__ == "__main__":
     unittest.main()

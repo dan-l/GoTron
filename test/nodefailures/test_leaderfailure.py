@@ -75,12 +75,5 @@ class LeaderFailureTest(unittest.TestCase):
             self.assertFalse(found_leader_msg,
                              "Client 3 should stay as a normal node")
 
-        # Kill the MS server.
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
-
 if __name__ == "__main__":
     unittest.main()

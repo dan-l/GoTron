@@ -63,13 +63,5 @@ class DisconnectBeforeGameStartTest(unittest.TestCase):
                          "players at some point"))
         self.assertFalse(starting_game_found, "Game should not have started")
 
-        ms_srv.kill()
-        ms_srv.wait()
-        client2.kill()
-        client2.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
-
 if __name__ == "__main__":
     unittest.main()

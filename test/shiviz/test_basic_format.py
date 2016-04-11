@@ -54,11 +54,5 @@ class BasicFormatTest(unittest.TestCase):
                     self.assertIsNone(govector_log_regex.match(line),
                                       "Line '{}' should be regular text".format(line))
 
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.kill()
-            client.wait()
-
 if __name__ == "__main__":
     unittest.main()

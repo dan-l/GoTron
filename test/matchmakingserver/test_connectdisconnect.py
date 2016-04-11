@@ -46,10 +46,5 @@ class ConnectDisconnectTest(unittest.TestCase):
                         "MS server should have been connected to")
         self.assertFalse(starting_game_found, "Game should not have started")
 
-        ms_srv.kill()
-        ms_srv.wait()
-        for client in clients:
-            client.wait()
-
 if __name__ == "__main__":
     unittest.main()
